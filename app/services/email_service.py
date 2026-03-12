@@ -5,7 +5,6 @@ from email.message import EmailMessage
 
 from flask import current_app
 
-
 def _mail_config() -> dict:
     return {
         "host": current_app.config.get("MAIL_HOST"),
