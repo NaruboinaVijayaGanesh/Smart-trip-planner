@@ -1,24 +1,15 @@
 from __future__ import annotations
-
 from datetime import datetime, timedelta
 from secrets import randbelow
 from threading import Lock
-
-
 _STORE: dict[tuple[str, str], dict] = {}
 _LOCK = Lock()
-
-
 def _key(purpose: str, email: str) -> tuple[str, str]:
     return purpose.strip().lower(), email.strip().lower()
-
-
 def _prune_expired(now: datetime) -> None:
     expired_keys = [item_key for item_key, data in _STORE.items() if data["expires_at"] <= now]
     for item_key in expired_keys:
         _STORE.pop(item_key, None)
-
-
 def issue_otp(email: str, purpose: str, payload: dict | None = None, ttl_minutes: int = 10) -> str:
     code = f"{randbelow(1_000_000):06d}"
     now = datetime.utcnow()
