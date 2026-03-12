@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-3">My Profile</h3>
+                <div class="mb-2"><strong>Full Name:</strong> {{ current_user.full_name }}</div>
+                <div class="mb-2"><strong>Email:</strong> {{ current_user.email }}</div>
+                <div class="mb-2"><strong>Role:</strong> {{ current_user.role|title }}</div>
+                <div class="mb-3"><strong>Joined:</strong> {{ current_user.created_at.date() if current_user.created_at else '-' }}</div>
+
+                <form method="post" action="{{ url_for('auth.update_profile') }}" class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Phone Number</label>
+                        <input
+                            class="form-control"
+                            name="phone"
+                            type="tel"
+                            value="{{ current_user.phone or '' }}"
+                            placeholder="+91XXXXXXXXXX"
+                            pattern="^\+?[0-9][0-9\s-]{6,18}$"
+                            required
+                        >
+                    </div>
+                    <div class="col-12 form-check">
+                        <input type="checkbox" name="whatsapp_opt_in" class="form-check-input" id="whatsAppOptInProfile" {% if current_user.whatsapp_opt_in %}checked{% endif %}>
+                        <label class="form-check-label" for="whatsAppOptInProfile">Send trip updates to WhatsApp</label>
+                    </div>
+                    <div class="col-12 d-grid d-md-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Save</button>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-dark"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

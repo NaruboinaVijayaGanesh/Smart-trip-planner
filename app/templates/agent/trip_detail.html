@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Agent Trip Details{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-3">{% include "partials/agent_sidebar.html" %}</div>
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div>
+                <h2>{{ trip.title }}</h2>
+                <p class="text-muted mb-1">{{ trip.destinations_raw }}</p>
+                <p class="mb-0">Client: {{ trip.client.full_name if trip.client else 'Direct traveler' }}</p>
+                <p class="mb-0">Traveler Account: {{ trip.traveler.full_name if trip.traveler else 'Not linked' }}</p>
+            </div>
+            {% set can_send_traveler_whatsapp = trip.traveler and trip.traveler.phone and trip.traveler.whatsapp_opt_in %}
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <form method="post" action="{{ url_for('agent.send_whatsapp_summary', trip_id=trip.id) }}">
+                    <button
+                        class="btn btn-sm btn-primary"
+                        {% if not can_send_traveler_whatsapp %}disabled title="Traveler phone or WhatsApp opt-in missing"{% endif %}
+                    >
+                        Send WhatsApp To Traveler
+                    </button>
+                </form>
+                <button class="btn btn-sm btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#whatsappShareBox" aria-expanded="false">
+                    Generate WhatsApp URL
+                </button>
+            </div>
+        </div>
+        {% if not can_send_traveler_whatsapp %}
+        <p class="small text-muted mt-n2 mb-3">To send direct WhatsApp, traveler must have phone number and WhatsApp opt-in enabled.</p>
+        {% endif %}
+
+        <div class="collapse mb-3" id="whatsappShareBox">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <label class="form-label mb-1">Generated WhatsApp Share URL</label>
+                    <div class="input-group">
+                        <input id="whatsappShareUrl" class="form-control" value="{{ whatsapp_link }}" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="copyWhatsappShareBtn">Copy URL</button>
+                        <a class="btn btn-success" href="{{ whatsapp_link }}" target="_blank">Open WhatsApp</a>
+                    </div>
+                    <small class="text-muted">Copy this URL and send it manually to client if needed.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Trip Management</h5>
+                <form class="row g-2" method="post" action="{{ url_for('agent.update_trip', trip_id=trip.id) }}">
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            {% for st in ['draft','sent','confirmed','in_progress','completed'] %}
+                                <option value="{{ st }}" {% if trip.status == st %}selected{% endif %}>{{ st|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Service Charge</label>
+                        <input class="form-control" type="number" step="0.01" name="service_charge" value="{{ trip.service_charge }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Days</label>
+                        <input class="form-control" type="number" min="{{ destinations|length }}" name="number_of_days" value="{{ trip.number_of_days }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Travelers</label>
+                        <input class="form-control" type="number" min="1" name="number_of_people" value="{{ trip.number_of_people }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Places/Day</label>
+                        <select class="form-select" name="places_per_day" required>
+                            {% for count in [3,4,5,6] %}
+                                <option value="{{ count }}" {% if places_per_day == count %}selected{% endif %}>{{ count }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12 d-grid align-items-end">
+                        <button class="btn btn-primary mt-md-4">Request Trip Update</button>
+                    </div>
+                </form>
+                <div class="mt-3 p-2 bg-light rounded">
+                    <strong>Email structure:</strong>
+                    <pre class="mb-0 small">{{ email_template }}</pre>
+                </div>
+                <div class="mt-3 d-flex gap-2 flex-wrap">
+                    <form method="post" action="{{ url_for('agent.start_trip', trip_id=trip.id) }}">
+                        <button class="btn btn-sm btn-outline-success" {% if trip.status == 'in_progress' %}disabled{% endif %}>Start Trip</button>
+                    </form>
+                    <form method="post" action="{{ url_for('agent.end_trip', trip_id=trip.id) }}">
+                        <button class="btn btn-sm btn-outline-dark" {% if trip.status == 'completed' %}disabled{% endif %}>End Trip</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if pending_trip_update %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Pending Trip Update (Awaiting Traveler)</h5>
+                <div class="row g-2 small">
+                    <div class="col-md-3"><strong>Status:</strong> {{ pending_trip_update.proposed_status|title }}</div>
+                    <div class="col-md-3"><strong>Days:</strong> {{ pending_trip_update.proposed_number_of_days }}</div>
+                    <div class="col-md-3"><strong>Travelers:</strong> {{ pending_trip_update.proposed_number_of_people }}</div>
+                    <div class="col-md-3"><strong>Places/Day:</strong> {{ pending_trip_update.proposed_places_per_day }}</div>
+                    <div class="col-md-3"><strong>Service Charge:</strong> {{ pending_trip_update.proposed_service_charge }}</div>
+                    <div class="col-md-6"><strong>Requested:</strong> {{ pending_trip_update.created_at }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if pending_requests %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Pending Traveler Approval</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr><th>Day/Slot</th><th>Current</th><th>Proposed</th><th>Requested</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for req in pending_requests %}
+                                <tr>
+                                    <td>Day {{ req.itinerary.day_number }}<br><small class="text-muted">{{ req.itinerary.time_slot }}</small></td>
+                                    <td>{{ req.itinerary.title }}</td>
+                                    <td>{{ req.proposed_title }}</td>
+                                    <td>{{ req.created_at }}</td>
+                                    <td>
+                                        <form method="post" action="{{ url_for('agent.cancel_itinerary_request', request_id=req.id) }}">
+                                            <button class="btn btn-sm btn-outline-danger">Cancel</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4"><div class="metric-card"><h6>Transport</h6><h4>{{ trip.transport_cost }}</h4></div></div>
+            <div class="col-md-4"><div class="metric-card"><h6>Hotel</h6><h4>{{ trip.hotel_cost }}</h4></div></div>
+            <div class="col-md-4"><div class="metric-card"><h6>Activity</h6><h4>{{ trip.activity_cost }}</h4></div></div>
+            <div class="col-md-4"><div class="metric-card"><h6>Service Charge</h6><h4>{{ trip.service_charge }}</h4></div></div>
+            <div class="col-md-4"><div class="metric-card"><h6>Total Group</h6><h4>{{ trip.total_group_cost }}</h4></div></div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Improve Food ML (Real Data)</h5>
+                <p class="text-muted small mb-2">Enter actual post-trip food spend. This feeds the dedicated food-cost training dataset.</p>
+                <form method="post" action="{{ url_for('agent.submit_food_feedback', trip_id=trip.id) }}" class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Actual Food Cost</label>
+                        <input class="form-control" type="number" step="0.01" min="1" name="actual_food_cost" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Actual Total Cost (optional)</label>
+                        <input class="form-control" type="number" step="0.01" min="1" name="actual_total_cost">
+                    </div>
+                    <div class="col-md-4 d-grid align-items-end">
+                        <button class="btn btn-outline-primary mt-md-4">Save Real Cost</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Hotel Booking System</h5>
+                <p class="text-muted small mb-2">Availability status is fetched live when provider data is available.</p>
+                <form method="post" action="{{ url_for('agent.create_booking', trip_id=trip.id) }}" class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Hotel</label>
+                        <select class="form-select" name="hotel_id" required>
+                            {% for hotel in hotels %}
+                                {% set availability = hotel.availability_status if hotel.availability_status else 'Live status unavailable' %}
+                                <option value="{{ hotel.id }}" {% if availability == 'Sold Out' %}disabled{% endif %}>
+                                    {{ hotel.name }} ({{ hotel.city }}) - {{ availability }}{% if hotel.rooms_available is not none %} ({{ hotel.rooms_available }} rooms){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label">Check-in</label><input class="form-control" type="date" name="checkin_date"></div>
+                    <div class="col-md-2"><label class="form-label">Check-out</label><input class="form-control" type="date" name="checkout_date"></div>
+                    <div class="col-md-2">
+                        <label class="form-label">Reference #</label>
+                        <div class="input-group">
+                            <input id="bookingReferenceInput" class="form-control" name="reference_number">
+                            <button class="btn btn-outline-secondary speech-fill" type="button" data-target="bookingReferenceInput" data-mode="append" title="Speak booking reference">
+                                <i class="bi bi-mic"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2"><label class="form-label">Total Price</label><input class="form-control" type="number" step="0.01" name="total_price"></div>
+                    <div class="col-md-3"><label class="form-label">Booking Status</label>
+                        <select class="form-select" name="status"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select>
+                    </div>
+                    <div class="col-md-3"><label class="form-label">Payment Status</label>
+                        <select class="form-select" name="payment_status"><option value="pending">Pending</option><option value="paid">Paid</option></select>
+                    </div>
+                    <div class="col-md-6 d-grid align-items-end"><button class="btn btn-dark mt-md-4">Confirm Booking</button></div>
+                </form>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Hotel</th><th>Reference</th><th>Status</th><th>Payment</th><th>Total</th></tr></thead>
+                        <tbody>
+                            {% for booking in bookings %}
+                                <tr>
+                                    <td>{{ booking.hotel.name }}</td>
+                                    <td>{{ booking.reference_number or '-' }}</td>
+                                    <td>{{ booking.status|title }}</td>
+                                    <td>{{ booking.payment_status|title }}</td>
+                                    <td>{{ booking.total_price }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="5" class="text-muted">No bookings yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5>Itinerary (Manual Edit Supported)</h5>
+                <p class="text-muted small mb-2">Save Item updates this itinerary row and recalculates activity/total costs.</p>
+                {% for day, items in itinerary_by_day.items() %}
+                    <h6 class="mt-4">Day {{ day }}</h6>
+                    <div class="row g-3">
+                        {% for item in items %}
+                            <div class="col-md-6">
+                                <div class="itinerary-item h-100">
+                                    {% set pending_req = pending_by_itinerary.get(item.id) if pending_by_itinerary else None %}
+                                    <p class="small mb-1 text-primary">{{ item.time_slot }}</p>
+                                    <p class="small mb-1 text-muted">{{ item.destination.name if item.destination else '-' }}</p>
+                                    {% if pending_req %}
+                                        <span class="badge text-bg-warning mb-2">Pending traveler approval</span>
+                                    {% endif %}
+                                    <form method="post" action="{{ url_for('agent.update_itinerary', item_id=item.id) }}">
+                                        <input class="form-control form-control-sm mb-2" name="title" value="{{ pending_req.proposed_title if pending_req else item.title }}">
+                                        <textarea class="form-control form-control-sm mb-2" name="description" rows="2">{{ pending_req.proposed_description if pending_req else item.description }}</textarea>
+                                        <div class="row g-2">
+                                            <div class="col-4"><input class="form-control form-control-sm" name="ticket_price" type="number" step="0.01" value="{{ pending_req.proposed_ticket_price if pending_req else item.ticket_price }}"></div>
+                                            <div class="col-8">
+                                                <input class="form-control form-control-sm" name="map_query" value="{{ (pending_req.proposed_title if pending_req else item.title) }}, {{ item.destination.name if item.destination else trip.state_country }}" placeholder="Place name for Google Maps">
+                                                <input type="hidden" name="map_link" value="{{ item.map_link }}">
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-primary mt-2">Request Change</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const copyBtn = document.getElementById("copyWhatsappShareBtn");
+    const urlInput = document.getElementById("whatsappShareUrl");
+    if (!copyBtn || !urlInput) {
+        return;
+    }
+    copyBtn.addEventListener("click", async () => {
+        try {
+            await navigator.clipboard.writeText(urlInput.value);
+            copyBtn.textContent = "Copied";
+            setTimeout(() => { copyBtn.textContent = "Copy URL"; }, 1600);
+        } catch (err) {
+            urlInput.select();
+            document.execCommand("copy");
+            copyBtn.textContent = "Copied";
+            setTimeout(() => { copyBtn.textContent = "Copy URL"; }, 1600);
+        }
+    });
+});
+</script>
+{% endblock %}

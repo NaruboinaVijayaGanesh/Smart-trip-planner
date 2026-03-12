@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Travel Chatbot{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-3"><i class="bi bi-chat-dots me-2"></i>Travel Chatbot</h3>
+                <form method="post" class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Ask your question</label>
+                        <div class="input-group">
+                            <textarea id="chatbotQuestion" class="form-control" name="question" rows="4" required>{{ question }}</textarea>
+                            <button class="btn btn-outline-secondary speech-fill" type="button" data-target="chatbotQuestion" data-mode="replace" title="Speak question">
+                                <i class="bi bi-mic"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                        <button class="btn btn-primary">Ask</button>
+                    </div>
+                </form>
+                {% if answer %}
+                    <hr>
+                    <h6 class="mb-2">Answer</h6>
+                    <div class="p-3 rounded bg-light">{{ answer }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

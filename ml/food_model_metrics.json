@@ -1,0 +1,14 @@
+{
+  "dataset": {
+    "path": "C:\\Users\\Deepa\\Downloads\\atp\\data\\food_cost_dataset.csv",
+    "total_rows": 100000,
+    "train_rows": 80000,
+    "test_rows": 20000
+  },
+  "regression": {
+    "mae": 2844.6626299550844,
+    "rmse": 4146.409560197588,
+    "r2": 0.9422641975810914
+  },
+  "model_path": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\food_cost_model.joblib"
+}

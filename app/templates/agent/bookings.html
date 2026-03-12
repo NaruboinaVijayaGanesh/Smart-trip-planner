@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Bookings{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-3">{% include "partials/agent_sidebar.html" %}</div>
+    <div class="col-lg-9">
+        <h2>Hotel Booking Overview</h2>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6"><div class="metric-card"><h6>Total Bookings</h6><h3>{{ total_bookings }}</h3></div></div>
+            <div class="col-md-6"><div class="metric-card"><h6>Upcoming Check-ins</h6><h3>{{ upcoming_checkins }}</h3></div></div>
+        </div>
+
+        <div class="card border-0 shadow-sm p-3">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Trip</th><th>Hotel</th><th>Check-in</th><th>Status</th><th>Payment</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for booking in bookings %}
+                            <tr>
+                                <td>{{ booking.trip.title }}</td>
+                                <td>{{ booking.hotel.name }}</td>
+                                <td>{{ booking.checkin_date or '-' }}</td>
+                                <td>{{ booking.status|title }}</td>
+                                <td>{{ booking.payment_status|title }}</td>
+                                <td>
+                                    <form method="post" action="{{ url_for('agent.update_booking', booking_id=booking.id) }}" class="d-flex gap-1">
+                                        <select class="form-select form-select-sm" name="status">
+                                            {% for st in ['pending','confirmed','cancelled'] %}
+                                                <option value="{{ st }}" {% if booking.status == st %}selected{% endif %}>{{ st|title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <select class="form-select form-select-sm" name="payment_status">
+                                            {% for st in ['pending','paid'] %}
+                                                <option value="{{ st }}" {% if booking.payment_status == st %}selected{% endif %}>{{ st|title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input class="form-control form-control-sm" name="reference_number" value="{{ booking.reference_number or '' }}" placeholder="Reference">
+                                        <input class="form-control form-control-sm" type="number" step="0.01" name="total_price" value="{{ booking.total_price }}">
+                                        <button class="btn btn-sm btn-outline-primary">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="text-muted">No bookings found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

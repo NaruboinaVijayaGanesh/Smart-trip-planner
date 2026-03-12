@@ -1,0 +1,264 @@
+:root {
+    --bg-ivory: #f7f0e4;
+    --bg-mist: #ebf1f6;
+    --ink: #18263a;
+    --muted: #5c6b7c;
+    --primary: #224f89;
+    --primary-deep: #17365f;
+    --accent: #a66b2d;
+    --panel: #ffffff;
+    --line: #d9c9b5;
+    --shadow: 0 12px 24px rgba(30, 38, 51, 0.1);
+}
+
+body.app-shell {
+    font-family: "Source Sans 3", sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 10% 10%, rgba(166, 107, 45, 0.08), transparent 35%),
+        radial-gradient(circle at 90% 15%, rgba(34, 79, 137, 0.1), transparent 30%),
+        linear-gradient(120deg, var(--bg-mist) 0%, var(--bg-mist) 55%, var(--bg-ivory) 55%, var(--bg-ivory) 100%);
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, .navbar-brand {
+    font-family: "Cinzel", serif;
+}
+
+.app-navbar {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.navbar-brand {
+    color: var(--primary-deep);
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+}
+
+.navbar-brand i {
+    color: var(--accent);
+}
+
+.nav-link {
+    color: #243952;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background: var(--primary-deep);
+    border-color: var(--primary-deep);
+}
+
+.section-eyebrow {
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    font-weight: 700;
+}
+
+.hero-panel {
+    background: linear-gradient(140deg, #fdf8f0 5%, #f5fafc 100%);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+}
+
+.hero-image-wrap {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 14px 24px rgba(28, 40, 56, 0.18);
+}
+
+.hero-image {
+    width: 100%;
+    height: 350px;
+    object-fit: cover;
+    display: block;
+}
+
+.hero-stamp {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(24, 38, 58, 0.82);
+    color: #f4e4cf;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+}
+
+.feature-card,
+.metric-card,
+.trip-card,
+.hotel-card,
+.itinerary-item,
+.classic-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.feature-card,
+.metric-card,
+.trip-card,
+.hotel-card,
+.itinerary-item {
+    padding: 1rem;
+}
+
+.feature-card {
+    text-align: center;
+}
+
+.feature-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    margin: 0 auto 0.75rem;
+    display: grid;
+    place-items: center;
+    font-size: 1.3rem;
+    background: #f0f5fb;
+    color: var(--primary);
+    border: 1px solid #c8d8eb;
+}
+
+.destination-card {
+    border-radius: 0.8rem;
+    overflow: hidden;
+    border: 1px solid #d9dddf;
+    background: #fff;
+}
+
+.destination-card img {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    display: block;
+}
+
+.destination-meta {
+    padding: 0.8rem;
+}
+
+.destination-meta h6 {
+    margin-bottom: 0.2rem;
+}
+
+.destination-meta p {
+    margin-bottom: 0;
+    color: var(--muted);
+}
+
+.classic-banner {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid #d7d1c6;
+}
+
+.classic-banner img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.95);
+}
+
+.classic-banner-content {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1rem 1.2rem;
+    color: #fff;
+    background: linear-gradient(180deg, transparent 0%, rgba(14, 27, 43, 0.86) 75%);
+}
+
+.metric-card h6 {
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+    font-family: "Source Sans 3", sans-serif;
+    font-weight: 700;
+}
+
+.metric-card h3,
+.metric-card h4 {
+    margin-bottom: 0;
+    color: var(--primary);
+    font-family: "Source Sans 3", sans-serif;
+}
+
+.chip-check {
+    position: relative;
+}
+
+.chip-check input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+}
+
+.chip-check span {
+    display: inline-block;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid #d0c2af;
+    background: #fffefb;
+    color: #324357;
+    font-size: 0.9rem;
+}
+
+.chip-check input:checked + span {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.agent-sidebar {
+    background: linear-gradient(180deg, #273a57, #17283f);
+    color: #fff;
+    height: 100%;
+    min-height: 280px;
+}
+
+.agent-sidebar .btn {
+    text-align: left;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.hotel-thumb {
+    width: 100%;
+    height: 130px;
+    border-radius: 0.6rem;
+    object-fit: cover;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.8rem 0.6rem;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+@media (max-width: 991px) {
+    body.app-shell {
+        background: linear-gradient(180deg, var(--bg-mist), var(--bg-ivory));
+    }
+
+    .hero-image {
+        height: 280px;
+    }
+
+    .classic-banner img {
+        height: 180px;
+    }
+}

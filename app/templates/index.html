@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Home | AI Air Trip Planner{% endblock %}
+{% block content %}
+<section class="hero-panel rounded-4 p-4 p-lg-5 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+            <p class="text-uppercase section-eyebrow mb-2">Classic Journey Planner</p>
+            <h1 class="display-5 fw-bold mb-3">Craft Elegant Trips With AI Precision</h1>
+            <p class="lead text-secondary">Plan complete itineraries, estimate budgets, and manage hotel bookings through polished traveler and travel-agent dashboards.</p>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg"><i class="bi bi-stars me-2"></i>Start Planning</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-dark btn-lg"><i class="bi bi-door-open me-2"></i>Sign In</a>
+                <a href="/auth/google/start?mode=login" class="btn btn-outline-danger btn-lg"><i class="bi bi-google me-2"></i>Google Sign-In</a>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="hero-image-wrap">
+                <img class="hero-image" src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1300&q=80" alt="Airplane wing above clouds">
+                <div class="hero-stamp">
+                    <i class="bi bi-airplane-engines me-1"></i> AI AIR TRIP PLANNER
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-person-walking"></i></div>
+            <h5>Traveler Dashboard</h5>
+            <p>Create, regenerate, and track trips with automatic budget breakdown.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-briefcase-fill"></i></div>
+            <h5>Agent Dashboard</h5>
+            <p>Manage clients, create trips, edit itinerary, and control bookings.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <h5>ML Budget Prediction</h5>
+            <p>Regression model predicts estimated costs by destination and trip profile.</p>
+        </div>
+    </div>
+</section>
+
+<section class="card border-0 shadow-sm classic-panel p-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h3 class="mb-0">Popular Destinations</h3>
+        <span class="text-muted"><i class="bi bi-image me-1"></i>Images from Unsplash</span>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6 col-xl-3">
+            <article class="destination-card">
+                <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=80" alt="Paris cityscape">
+                <div class="destination-meta">
+                    <h6>Paris</h6>
+                    <p><i class="bi bi-camera-fill me-1"></i>Culture + Romance</p>
+                </div>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="destination-card">
+                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80" alt="Beach destination">
+                <div class="destination-meta">
+                    <h6>Bali</h6>
+                    <p><i class="bi bi-sun me-1"></i>Beach + Relaxation</p>
+                </div>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="destination-card">
+                <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80" alt="Mountain destination">
+                <div class="destination-meta">
+                    <h6>Manali</h6>
+                    <p><i class="bi bi-tree-fill me-1"></i>Nature + Adventure</p>
+                </div>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="destination-card">
+                <img src="https://images.unsplash.com/photo-1533929736458-ca588d08c8be?auto=format&fit=crop&w=900&q=80" alt="Dubai skyline">
+                <div class="destination-meta">
+                    <h6>Dubai</h6>
+                    <p><i class="bi bi-buildings-fill me-1"></i>Luxury + Shopping</p>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+{% endblock %}

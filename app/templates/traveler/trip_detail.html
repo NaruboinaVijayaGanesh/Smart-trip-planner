@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Trip Details{% endblock %}
+{% block content %}
+{% set destination_fallback = url_for('static', filename='img/destination-fallback.svg') %}
+{% set hotel_fallback = url_for('static', filename='img/hotel-fallback.svg') %}
+{% set hotel_images = [
+    'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1519821172141-b5d8fca4d6c7?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80'
+] %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h2>{{ trip.title }}</h2>
+        <p class="text-muted mb-1"><i class="bi bi-geo-alt-fill me-1"></i>{{ trip.destinations_raw }} | <i class="bi bi-calendar3 me-1"></i>{{ trip.number_of_days }} days | <i class="bi bi-people-fill me-1"></i>{{ trip.number_of_people }} traveler(s)</p>
+        <p class="mb-1"><i class="bi bi-person-badge me-1"></i>Managed by: {{ trip.agent.full_name if trip.agent else 'Self-managed' }}</p>
+        <span class="badge text-bg-info">{{ trip.status|title }}</span>
+        {% if trip.status == 'sent' %}
+            <form method="post" action="{{ url_for('traveler.approve_trip', trip_id=trip.id) }}" class="d-inline ms-2">
+                <button class="btn btn-sm btn-success">Approve Latest Agent Changes</button>
+            </form>
+        {% endif %}
+    </div>
+    <div class="d-flex gap-2 flex-wrap justify-content-end">
+        <form method="post" action="{{ url_for('traveler.regenerate', trip_id=trip.id) }}" class="p-2 border rounded bg-white shadow-sm">
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-4">
+                    <label class="form-label mb-1">Days</label>
+                    <input class="form-control form-control-sm" type="number" min="{{ destinations|length }}" name="number_of_days" value="{{ trip.number_of_days }}" required>
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label mb-1">Travelers</label>
+                    <input class="form-control form-control-sm" type="number" min="1" name="number_of_people" value="{{ trip.number_of_people }}" required>
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label mb-1">Places/Day</label>
+                    <select class="form-select form-select-sm" name="places_per_day" required>
+                        {% for count in [3,4,5,6] %}
+                            <option value="{{ count }}" {% if places_per_day == count %}selected{% endif %}>{{ count }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label mb-1">Keep these days as-is</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for day in itinerary_by_day.keys()|list|sort %}
+                            <label class="chip-check mb-0">
+                                <input type="checkbox" name="keep_days" value="{{ day }}">
+                                <span>Day {{ day }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-12 d-grid">
+                    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-repeat me-1"></i>Regenerate Selected Days</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if trip.budget > 0 %}
+<div class="alert {{ 'alert-success' if within_budget else 'alert-warning' }} border-0 shadow-sm" role="alert">
+    <strong>Budget:</strong> {{ trip.budget }}
+    {% if within_budget %}
+        <span class="ms-2">Plan is within budget. Estimated total: {{ trip.total_group_cost }}.</span>
+    {% else %}
+        <span class="ms-2">Plan is over budget by {{ budget_gap }}. You can reduce days, people, or destination count.</span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if pending_trip_update %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-pencil-square me-2"></i>Pending Trip Update Request</h5>
+        <div class="row g-2">
+            <div class="col-md-4"><strong>Status:</strong> {{ pending_trip_update.proposed_status|title }}</div>
+            <div class="col-md-4"><strong>Days:</strong> {{ pending_trip_update.proposed_number_of_days }}</div>
+            <div class="col-md-4"><strong>Travelers:</strong> {{ pending_trip_update.proposed_number_of_people }}</div>
+            <div class="col-md-4"><strong>Places/Day:</strong> {{ pending_trip_update.proposed_places_per_day }}</div>
+            <div class="col-md-4"><strong>Service Charge:</strong> {{ pending_trip_update.proposed_service_charge }}</div>
+            <div class="col-md-4"><strong>Requested:</strong> {{ pending_trip_update.created_at }}</div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <form method="post" action="{{ url_for('traveler.approve_trip_update', request_id=pending_trip_update.id) }}">
+                <button class="btn btn-success btn-sm">Approve Trip Update</button>
+            </form>
+            <form method="post" action="{{ url_for('traveler.reject_trip_update', request_id=pending_trip_update.id) }}">
+                <button class="btn btn-outline-danger btn-sm">Reject Trip Update</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if pending_requests %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Pending Agent Edit Requests</h5>
+            <form method="post" action="{{ url_for('traveler.approve_trip', trip_id=trip.id) }}">
+                <button class="btn btn-sm btn-success">Approve All</button>
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Day/Slot</th>
+                        <th>Current</th>
+                        <th>Proposed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request_row in pending_requests %}
+                        <tr>
+                            <td>
+                                Day {{ request_row.itinerary.day_number }}<br>
+                                <small class="text-muted">{{ request_row.itinerary.time_slot }}</small>
+                            </td>
+                            <td>
+                                <div><strong>{{ request_row.itinerary.title }}</strong></div>
+                                <div class="small text-muted">{{ request_row.itinerary.description }}</div>
+                                <div class="small">Ticket: {{ request_row.itinerary.ticket_price }}</div>
+                            </td>
+                            <td>
+                                <div><strong>{{ request_row.proposed_title }}</strong></div>
+                                <div class="small text-muted">{{ request_row.proposed_description }}</div>
+                                <div class="small">Ticket: {{ request_row.proposed_ticket_price }}</div>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <form method="post" action="{{ url_for('traveler.approve_itinerary_request', request_id=request_row.id) }}">
+                                        <button class="btn btn-sm btn-success">Approve</button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('traveler.reject_itinerary_request', request_id=request_row.id) }}">
+                                        <button class="btn btn-sm btn-outline-danger">Reject</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-airplane-fill me-1"></i>Transport</h6><h4>{{ trip.transport_cost }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-building me-1"></i>Hotel</h6><h4>{{ trip.hotel_cost }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-cup-hot-fill me-1"></i>Food</h6><h4>{{ trip.food_cost }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-ticket-perforated-fill me-1"></i>Activity</h6><h4>{{ trip.activity_cost }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-receipt me-1"></i>Service Charge</h6><h4>{{ trip.service_charge }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-person-badge me-1"></i>Per Person</h6><h4>{{ trip.per_person_cost }}</h4></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-wallet2 me-1"></i>Total Group</h6><h4>{{ trip.total_group_cost }}</h4></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-database-check me-2"></i>Improve Food ML (Real Data)</h5>
+        <p class="text-muted small mb-2">After trip completion, enter actual food spend. This helps train a real food-cost ML model.</p>
+        <form method="post" action="{{ url_for('traveler.submit_food_feedback', trip_id=trip.id) }}" class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Actual Food Cost</label>
+                <input class="form-control" type="number" step="0.01" min="1" name="actual_food_cost" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Actual Total Cost (optional)</label>
+                <input class="form-control" type="number" step="0.01" min="1" name="actual_total_cost">
+            </div>
+            <div class="col-md-4 d-grid align-items-end">
+                <button class="btn btn-outline-primary mt-md-4">Save Real Cost</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-train-front-fill me-2"></i>Travel Type Details</h5>
+        {% if trip.travel_mode == 'train' %}
+            <p class="mb-1">Mode selected: <strong>Train</strong>. Suggested portals: IRCTC, MakeMyTrip Rail, ConfirmTkt.</p>
+        {% elif trip.travel_mode == 'bus' %}
+            <p class="mb-1">Mode selected: <strong>Bus</strong>. Suggested portals: RedBus, AbhiBus, state RTC portals.</p>
+        {% elif trip.travel_mode == 'flight' %}
+            <p class="mb-1">Mode selected: <strong>Flight</strong>. Suggested portals: airline websites, MakeMyTrip, Ixigo, Cleartrip.</p>
+        {% else %}
+            <p class="mb-1">Mode selected: <strong>{{ trip.travel_mode|title }}</strong>.</p>
+        {% endif %}
+        <p class="text-muted mb-0">Availability and final fares can change in real time; verify before booking.</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-image-fill me-2"></i>Destination Highlights</h5>
+        <div class="row g-3">
+            {% for card in destination_cards %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="destination-card h-100">
+                        <img
+                            src="{{ card.image_url or destination_fallback }}"
+                            alt="{{ card.name }} destination image"
+                            onerror="this.onerror=null;this.src='{{ destination_fallback }}';"
+                        >
+                        <div class="destination-meta">
+                            <h6>{{ card.name }}</h6>
+                            <p class="mb-2">{{ card.search_query }}</p>
+                            <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ card.map_link }}">
+                                <i class="bi bi-pin-map-fill me-1"></i>Open Map
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-12"><p class="text-muted">No destination images available.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-stars me-2"></i>Recommended Hotels</h5>
+        <p class="text-muted small mb-2">Room availability below is fetched live when provider data is available.</p>
+        <div class="row g-3">
+            {% for hotel in hotels %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="hotel-card h-100">
+                        <img
+                            class="hotel-thumb mb-2"
+                            src="{{ hotel_images[loop.index0 % (hotel_images|length)] }}"
+                            alt="Hotel preview"
+                            onerror="this.onerror=null;this.src='{{ hotel_fallback }}';"
+                        >
+                        <h6>{{ hotel.name }}</h6>
+                        <p class="mb-1"><i class="bi bi-geo-alt me-1"></i>{{ hotel.city }} | <i class="bi bi-star-fill me-1"></i>{{ hotel.rating }}</p>
+                        <p class="mb-1"><i class="bi bi-currency-rupee me-1"></i>{{ hotel.price_min }} - {{ hotel.price_max }}</p>
+                        <p class="mb-2"><i class="bi bi-signpost me-1"></i>{{ hotel.distance_km }} km from attraction</p>
+                        {% set availability = hotel.availability_status if hotel.availability_status else 'Live status unavailable' %}
+                        <p class="mb-2">
+                            <i class="bi bi-door-open me-1"></i>
+                            {% if availability == 'Available' %}
+                                <span class="badge text-bg-success">Available{% if hotel.rooms_available is not none %} ({{ hotel.rooms_available }} rooms){% endif %}</span>
+                            {% elif availability == 'Limited' %}
+                                <span class="badge text-bg-warning">Limited{% if hotel.rooms_available is not none %} ({{ hotel.rooms_available }} rooms){% endif %}</span>
+                            {% elif availability == 'Sold Out' %}
+                                <span class="badge text-bg-danger">Sold Out</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">{{ availability }}</span>
+                            {% endif %}
+                        </p>
+                        <div class="d-flex gap-2 flex-wrap mb-2">
+                            <a class="btn btn-sm btn-outline-dark" target="_blank" href="{{ hotel.map_link }}"><i class="bi bi-pin-map me-1"></i>Map</a>
+                        </div>
+                        <form method="post" action="{{ booking_form_action }}" class="row g-2">
+                            <input type="hidden" name="hotel_id" value="{{ hotel.id }}">
+                            <div class="col-6">
+                                <input class="form-control form-control-sm" type="date" name="checkin_date" required>
+                            </div>
+                            <div class="col-6">
+                                <input class="form-control form-control-sm" type="date" name="checkout_date" required>
+                            </div>
+                            <div class="col-7">
+                                <input class="form-control form-control-sm" type="number" step="0.01" name="total_price" placeholder="Total price" title="Optional: enter the final booking amount charged by hotel.">
+                            </div>
+                            <div class="col-5 d-grid">
+                                <button class="btn btn-sm btn-primary" type="submit" {% if availability == 'Sold Out' %}disabled{% endif %}>Book</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-12"><p class="text-muted">No hotels available.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-building-check me-2"></i>Booking Status</h5>
+        {% if bookings %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr><th>Hotel</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Payment</th><th>Reference</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in bookings %}
+                            <tr>
+                                <td>{{ booking.hotel.name }}</td>
+                                <td>{{ booking.checkin_date or '-' }}</td>
+                                <td>{{ booking.checkout_date or '-' }}</td>
+                                <td>{{ booking.status|title }}</td>
+                                <td>{{ booking.payment_status|title }}</td>
+                                <td>{{ booking.reference_number or '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No booking created for this trip yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <h5><i class="bi bi-journal-richtext me-2"></i>Day-wise Itinerary</h5>
+        {% for day, items in itinerary_by_day.items() %}
+            <h6 class="mt-4">Day {{ day }}</h6>
+            <div class="row g-3">
+                {% for item in items %}
+                    <div class="col-md-6">
+                        <div class="itinerary-item h-100">
+                            <small class="text-uppercase text-primary"><i class="bi bi-clock-history me-1"></i>{{ item.time_slot }}</small>
+                            <p class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i>{{ item.destination.name if item.destination else '-' }}</p>
+                            <h6 class="mb-1">{{ item.title }}</h6>
+                            <p class="mb-1">{{ item.description }}</p>
+                            <p class="mb-1"><i class="bi bi-ticket-perforated me-1"></i>{{ item.ticket_price }} | <i class="bi bi-star-fill me-1"></i>{{ item.rating }}</p>
+                            <p class="mb-2"><i class="bi bi-cloud-sun me-1"></i>{{ item.weather_summary }}</p>
+                            <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ item.map_link }}"><i class="bi bi-geo-alt-fill me-1"></i>Google Maps</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

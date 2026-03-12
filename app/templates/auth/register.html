@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <h3 class="mb-3">Create Account</h3>
+                {% if otp_required %}
+                    <form method="post" action="{{ url_for('auth.register') }}" class="row g-3">
+                        <input type="hidden" name="action" value="verify_register_otp">
+                        <div class="col-12">
+                            <label class="form-label">Registered Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ otp_email }}" required readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">OTP</label>
+                            <input type="text" name="otp" class="form-control" maxlength="6" minlength="6" required>
+                            <small class="text-muted">Enter the 6-digit code sent to your email.</small>
+                        </div>
+                        <div class="col-12 d-grid">
+                            <button class="btn btn-primary">Verify OTP & Create Account</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ url_for('auth.register') }}" class="row g-3">
+                        <input type="hidden" name="action" value="send_register_otp">
+                        <div class="col-12">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" name="full_name" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" name="phone" class="form-control" placeholder="+91XXXXXXXXXX" pattern="^\+?[0-9][0-9\s-]{6,18}$" required>
+                        </div>
+                        <div class="col-12 form-check">
+                            <input type="checkbox" name="whatsapp_opt_in" class="form-check-input" id="whatsAppOptInRegister" checked>
+                            <label class="form-check-label" for="whatsAppOptInRegister">Send trip updates to WhatsApp</label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password</label>
+                            <div class="input-group">
+                                <input id="registerPassword" type="password" name="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary password-toggle" type="button" data-target="registerPassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Confirm Password</label>
+                            <div class="input-group">
+                                <input id="registerConfirmPassword" type="password" name="confirm_password" class="form-control" required>
+                                <button class="btn btn-outline-secondary password-toggle" type="button" data-target="registerConfirmPassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted">Use 8+ chars with uppercase, lowercase, number, and special symbol.</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Role</label>
+                            <select name="role" class="form-select" required>
+                                <option value="traveler">Traveler</option>
+                                <option value="agent">Travel Agent</option>
+                            </select>
+                        </div>
+                        <div class="col-12 d-grid">
+                            <button class="btn btn-primary">Send OTP</button>
+                        </div>
+                        <div class="col-12 d-grid">
+                            <a class="btn btn-outline-danger" href="/auth/google/start?mode=register&role=traveler">
+                                <i class="bi bi-google me-2"></i>Sign up with Google
+                            </a>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

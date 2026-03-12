@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Trip Management{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-3">{% include "partials/agent_sidebar.html" %}</div>
+    <div class="col-lg-9">
+        <h2>Trip Management</h2>
+        <div class="table-responsive card border-0 shadow-sm p-3">
+            <table class="table align-middle">
+                <thead><tr><th>Trip</th><th>Client</th><th>Traveler</th><th>Status</th><th>Total</th><th></th></tr></thead>
+                <tbody>
+                    {% for trip in trips %}
+                        <tr>
+                            <td>{{ trip.title }}</td>
+                            <td>{{ trip.client.full_name if trip.client else 'Direct' }}</td>
+                            <td>{{ trip.traveler.full_name if trip.traveler else '-' }}</td>
+                            <td><span class="badge text-bg-secondary">{{ trip.status|title }}</span></td>
+                            <td>{{ trip.total_group_cost }}</td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('agent.view_trip', trip_id=trip.id) }}">Open</a>
+                                <form method="post" class="d-inline" action="{{ url_for('agent.delete_trip', trip_id=trip.id) }}" onsubmit="return confirm('Delete trip?');">
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6" class="text-muted">No trips available.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+<div class="agent-sidebar p-3 rounded-4">
+    <h5 class="mb-3"><i class="bi bi-briefcase-fill me-2"></i>Agent Panel</h5>
+    <div class="d-grid gap-2">
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('agent.dashboard') }}"><i class="bi bi-bar-chart-line-fill me-1"></i>Overview</a>
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('agent.clients') }}"><i class="bi bi-people-fill me-1"></i>Clients</a>
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('agent.trips') }}"><i class="bi bi-map-fill me-1"></i>Trips</a>
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('agent.create_trip') }}"><i class="bi bi-plus-square-fill me-1"></i>Create Trip</a>
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('agent.bookings') }}"><i class="bi bi-building-check me-1"></i>Bookings</a>
+    </div>
+</div>

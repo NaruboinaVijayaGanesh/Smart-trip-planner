@@ -1,0 +1,31 @@
+from app.models.entities import (
+    AgentTraveler,
+    Activity,
+    Booking,
+    Client,
+    Destination,
+    Hotel,
+    Itinerary,
+    ItineraryEditRequest,
+    NotificationLog,
+    Payment,
+    Trip,
+    TripUpdateRequest,
+    User,
+)
+
+__all__ = [
+    "User",
+    "AgentTraveler",
+    "Client",
+    "Trip",
+    "Destination",
+    "Itinerary",
+    "Hotel",
+    "Booking",
+    "Payment",
+    "Activity",
+    "ItineraryEditRequest",
+    "NotificationLog",
+    "TripUpdateRequest",
+]

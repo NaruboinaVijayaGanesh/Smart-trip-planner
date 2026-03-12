@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Traveler Dashboard{% endblock %}
+{% block content %}
+<section class="classic-banner mb-4">
+    <img src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=1600&q=80" alt="Travel table with map">
+    <div class="classic-banner-content">
+        <p class="mb-1">Traveler Workspace</p>
+        <h2 class="mb-0">Design your next journey with confidence</h2>
+    </div>
+</section>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h2 class="mb-0">Traveler Dashboard</h2>
+    <a class="btn btn-primary" href="{{ url_for('traveler.create_trip') }}"><i class="bi bi-plus-circle me-1"></i>Create New Trip</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-briefcase me-1"></i>Total Trips</h6><h3>{{ total_trips }}</h3></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-calendar-check me-1"></i>Upcoming Trips</h6><h3>{{ upcoming_trips }}</h3></div></div>
+    <div class="col-md-4"><div class="metric-card"><h6><i class="bi bi-cash-coin me-1"></i>Planned Spend</h6><h3>{{ total_spent }}</h3></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-person-lines-fill me-2"></i>All Agents</h5>
+        <div class="d-flex flex-wrap gap-2">
+            {% for agent in all_agents %}
+                <span class="badge text-bg-light border">{{ agent.full_name }} ({{ agent.email }})</span>
+            {% else %}
+                <span class="text-muted">No agent accounts found.</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <h5><i class="bi bi-clock-history me-2"></i>Recent Trips</h5>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr><th>Trip</th><th>Status</th><th>Start Date</th><th>Total Cost</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for trip in trips %}
+                        <tr>
+                            <td>{{ trip.title }}</td>
+                            <td><span class="badge text-bg-info">{{ trip.status|title }}</span></td>
+                            <td>{{ trip.start_date }}</td>
+                            <td>{{ trip.total_group_cost }}</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('traveler.view_trip', trip_id=trip.id) }}"><i class="bi bi-eye me-1"></i>View</a></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5" class="text-muted">No trips yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Client Management{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-3">{% include "partials/agent_sidebar.html" %}</div>
+    <div class="col-lg-9">
+        <h2 class="mb-3">Client Management</h2>
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5>Add Client</h5>
+                <form method="post" action="{{ url_for('agent.add_client') }}" class="row g-2">
+                    <div class="col-md-4"><input class="form-control" name="full_name" placeholder="Full Name" required></div>
+                    <div class="col-md-4"><input class="form-control" name="phone" pattern="^\\+?[0-9][0-9\\s-]{6,18}$" placeholder="Phone"></div>
+                    <div class="col-md-4 d-grid"><button class="btn btn-primary">Add</button></div>
+                    <div class="col-12"><textarea class="form-control" name="notes" placeholder="Notes"></textarea></div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5>Client List</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead><tr><th>Name</th><th>Phone</th><th>Notes</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {% for client in clients %}
+                                <tr>
+                                    <td>
+                                        <input
+                                            class="form-control form-control-sm"
+                                            name="full_name"
+                                            value="{{ client.full_name }}"
+                                            form="edit-client-{{ client.id }}"
+                                            required
+                                        >
+                                    </td>
+                                    <td>
+                                        <input
+                                            class="form-control form-control-sm"
+                                            name="phone"
+                                            value="{{ client.phone or '' }}"
+                                            pattern="^\\+?[0-9][0-9\\s-]{6,18}$"
+                                            form="edit-client-{{ client.id }}"
+                                        >
+                                    </td>
+                                    <td>
+                                        <input
+                                            class="form-control form-control-sm"
+                                            name="notes"
+                                            value="{{ client.notes or '' }}"
+                                            form="edit-client-{{ client.id }}"
+                                        >
+                                    </td>
+                                    <td>
+                                        <form id="edit-client-{{ client.id }}" method="post" action="{{ url_for('agent.edit_client', client_id=client.id) }}"></form>
+                                        <button class="btn btn-sm btn-outline-primary" type="submit" form="edit-client-{{ client.id }}">Save</button>
+                                        <button
+                                            class="btn btn-sm btn-outline-danger"
+                                            type="submit"
+                                            form="edit-client-{{ client.id }}"
+                                            formaction="{{ url_for('agent.delete_client', client_id=client.id) }}"
+                                            formnovalidate
+                                            onclick="return confirm('Delete client?');"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="4" class="text-muted">No clients yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

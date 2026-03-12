@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My Trips{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>My Trips</h2>
+    <a class="btn btn-primary" href="{{ url_for('traveler.create_trip') }}">Create Trip</a>
+</div>
+<div class="row g-3">
+    {% for trip in trips %}
+        <div class="col-md-6 col-xl-4">
+            <div class="trip-card h-100">
+                <h5>{{ trip.title }}</h5>
+                <p class="mb-1"><strong>Destinations:</strong> {{ trip.destinations_raw }}</p>
+                <p class="mb-1"><strong>Start:</strong> {{ trip.start_date }}</p>
+                <p class="mb-1"><strong>Managed By:</strong> {{ trip.agent.full_name if trip.agent else 'Self' }}</p>
+                <p class="mb-1"><strong>Total:</strong> {{ trip.total_group_cost }}</p>
+                <p><span class="badge text-bg-secondary">{{ trip.status|title }}</span></p>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('traveler.view_trip', trip_id=trip.id) }}">Details</a>
+                    <form method="post" action="{{ url_for('traveler.delete_trip', trip_id=trip.id) }}" onsubmit="return confirm('Delete this trip?');">
+                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-12"><p class="text-muted">No trips found.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{
+  "dataset": {
+    "path": "C:\\Users\\Deepa\\Downloads\\atp\\data\\budget_dataset.csv",
+    "total_rows": 100000,
+    "train_rows": 80000,
+    "test_rows": 20000
+  },
+  "tier_thresholds": {
+    "cheap_max": 69740.0193,
+    "moderate_max": 238001.55400000006
+  },
+  "classification": {
+    "accuracy": 0.9959,
+    "precision_weighted": 0.9959064123313223,
+    "recall_weighted": 0.9959,
+    "f1_weighted": 0.9959010674327489
+  },
+  "regression": {
+    "mae": 1881.1324816155277,
+    "rmse": 3327.4172346971027,
+    "r2": 0.9998628753026773
+  },
+  "artifacts": {
+    "confusion_matrix_csv": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\confusion_matrix.csv",
+    "classification_report_csv": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\classification_report.csv",
+    "model_path": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\budget_model.joblib"
+  }
+}
