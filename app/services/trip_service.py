@@ -1,7 +1,7 @@
 import math
 import random
 import time
-from collections import defaultdict
+
 
 from flask import current_app
 from sqlalchemy.exc import OperationalError
