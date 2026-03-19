@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+from sqlalchemy import inspect
 from sqlalchemy import text
 
 from app.extensions import db
 
 
+def _table_exists(table_name: str) -> bool:
+    return inspect(db.engine).has_table(table_name)
+
+
 def _table_columns(table_name: str) -> set[str]:
+    if not _table_exists(table_name):
+        return set()
     rows = db.session.execute(text(f"PRAGMA table_info({table_name})")).mappings().all()
     return {str(row.get("name", "")).strip().lower() for row in rows}
 
 
 def _add_column_if_missing(table_name: str, column_name: str, ddl_type: str) -> None:
+    if not _table_exists(table_name):
+        return
     columns = _table_columns(table_name)
     if column_name.lower() in columns:
         return
