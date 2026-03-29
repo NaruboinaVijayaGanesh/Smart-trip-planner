@@ -1,4 +1,10 @@
-from run import app
+from flask import Flask
 
-if __name__ == "__main__":
-    app.run()
+def create_app():
+    app = Flask(__name__)
+
+    @app.route("/")
+    def home():
+        return "Smart Trip Planner Running"
+
+    return app
