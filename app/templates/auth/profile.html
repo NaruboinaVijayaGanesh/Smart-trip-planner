@@ -1,3 +1,4 @@
+{% from "partials/phone_input.html" import phone_input %}
 {% extends "base.html" %}
 {% block title %}My Profile{% endblock %}
 {% block content %}
@@ -13,16 +14,7 @@
 
                 <form method="post" action="{{ url_for('auth.update_profile') }}" class="row g-3">
                     <div class="col-12">
-                        <label class="form-label">Phone Number</label>
-                        <input
-                            class="form-control"
-                            name="phone"
-                            type="tel"
-                            value="{{ current_user.phone or '' }}"
-                            placeholder="+91XXXXXXXXXX"
-                            pattern="^\+?[0-9][0-9\s-]{6,18}$"
-                            required
-                        >
+                        {{ phone_input("profilePhone", "Phone Number", existing_value=current_user.phone or '') }}
                     </div>
                     <div class="col-12 form-check">
                         <input type="checkbox" name="whatsapp_opt_in" class="form-check-input" id="whatsAppOptInProfile" {% if current_user.whatsapp_opt_in %}checked{% endif %}>

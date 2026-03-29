@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import OperationalError
 
@@ -22,6 +22,9 @@ from app.services.trip_service import (
 from app.services.trip_update_approval_service import approve_trip_update_request, reject_trip_update_request
 from app.services.weather_service import get_live_weather
 from app.services.whatsapp_service import send_trip_whatsapp_notifications
+from app.services.packing_service import generate_ai_packing_list
+from app.services.food_recommendation_service import generate_local_food_guide
+from app.services.export_service import generate_trip_pdf, generate_trip_ics
 
 
 traveler_bp = Blueprint("traveler", __name__)
@@ -472,4 +475,162 @@ def submit_food_feedback(trip_id):
         source_role="traveler",
     )
     flash("Thanks. Real food-cost data saved for ML training.", "success")
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/packing/generate", methods=["POST"])
+@login_required
+@role_required("traveler")
+def generate_packing(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    items = generate_ai_packing_list(trip)
+    if not items:
+        flash("Could not generate packing list. Please try again later.", "warning")
+    else:
+        trip.packing_list = items
+        db.session.commit()
+        flash("AI Packing Checklist generated!", "success")
+
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/packing/toggle", methods=["POST"])
+@login_required
+@role_required("traveler")
+def toggle_packing_item(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    item_id = request.form.get("item_id")
+    if not item_id:
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    current_list = trip.packing_list
+    updated = False
+    for it in current_list:
+        if it.get("id") == item_id:
+            it["checked"] = not it.get("checked", False)
+            updated = True
+            break
+    
+    if updated:
+        trip.packing_list = current_list
+        db.session.commit()
+    
+    # Check if it's an AJAX request
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return {"success": True}
+
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/packing/reset", methods=["POST"])
+@login_required
+@role_required("traveler")
+def reset_packing(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    trip.packing_list = []
+    db.session.commit()
+    flash("Packing checklist cleared.", "info")
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/food/generate", methods=["POST"])
+@login_required
+@role_required("traveler")
+def generate_food_guide(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    guide = generate_local_food_guide(trip)
+    if not guide:
+        flash("Could not generate food guide. Please try again later.", "warning")
+    else:
+        trip.food_deep_dive = guide
+        db.session.commit()
+        flash("Local food guide generated!", "success")
+
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/food/reset", methods=["POST"])
+@login_required
+@role_required("traveler")
+def reset_food_guide(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    trip.food_deep_dive = []
+    db.session.commit()
+    flash("Food guide cleared.", "info")
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/export/pdf")
+@login_required
+@role_required("traveler")
+def export_pdf(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    itinerary_by_day = {}
+    for item in sorted(trip.itineraries, key=_itinerary_sort_key):
+        itinerary_by_day.setdefault(item.day_number, []).append(item)
+
+    pdf_bytes = generate_trip_pdf(trip, itinerary_by_day)
+    
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"attachment; filename=itinerary_{trip.id}.pdf"
+    return response
+
+
+@traveler_bp.route("/trips/<int:trip_id>/export/ics")
+@login_required
+@role_required("traveler")
+def export_ics(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    ics_bytes = generate_trip_ics(trip)
+    
+    response = make_response(ics_bytes)
+    response.headers["Content-Type"] = "text/calendar"
+    response.headers["Content-Disposition"] = f"attachment; filename=itinerary_{trip.id}.ics"
+    return response
+
+
+@traveler_bp.route("/trips/<int:trip_id>/share/whatsapp", methods=["POST"])
+@login_required
+@role_required("traveler")
+def share_whatsapp(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if not trip.traveler.phone:
+        flash("Please update your profile with a valid phone number first.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    sent_count, target_count = send_trip_whatsapp_notifications(trip, "Itinerary shared manually by you")
+    if sent_count > 0:
+        flash(f"Itinerary shared to your WhatsApp (+{trip.traveler.phone})!", "success")
+    else:
+        # Check if Twilio is configured
+        if not current_app.config.get("TWILIO_ACCOUNT_SID"):
+            flash("WhatsApp service is not fully configured on the server yet.", "info")
+        else:
+            flash("Failed to send WhatsApp message. Please check your phone number.", "danger")
+
     return redirect(url_for("traveler.view_trip", trip_id=trip.id))

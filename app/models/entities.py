@@ -104,6 +104,8 @@ class Trip(TimestampMixin, db.Model):
     status = db.Column(db.String(20), nullable=False, default="draft")
     destinations_raw = db.Column(db.Text, nullable=False)
     preferences_json = db.Column(db.Text, nullable=False, default="[]")
+    packing_list_json = db.Column(db.Text, nullable=True, default="[]")
+    food_deep_dive_json = db.Column(db.Text, nullable=True, default="[]")
     itinerary_summary = db.Column(db.Text, nullable=True)
 
     service_charge = db.Column(db.Float, nullable=False, default=0.0)
@@ -153,6 +155,28 @@ class Trip(TimestampMixin, db.Model):
     def preferences(self, values: list[str]) -> None:
         self.preferences_json = json.dumps(values)
 
+    @property
+    def packing_list(self) -> list[dict]:
+        try:
+            return json.loads(self.packing_list_json or "[]")
+        except json.JSONDecodeError:
+            return []
+
+    @packing_list.setter
+    def packing_list(self, values: list[dict]) -> None:
+        self.packing_list_json = json.dumps(values)
+
+    @property
+    def food_deep_dive(self) -> list[dict]:
+        try:
+            return json.loads(self.food_deep_dive_json or "[]")
+        except json.JSONDecodeError:
+            return []
+
+    @food_deep_dive.setter
+    def food_deep_dive(self, values: list[dict]) -> None:
+        self.food_deep_dive_json = json.dumps(values)
+
 
 class Destination(TimestampMixin, db.Model):
     __tablename__ = "destinations"
@@ -180,6 +204,8 @@ class Itinerary(TimestampMixin, db.Model):
     weather_summary = db.Column(db.String(120), nullable=True)
     map_link = db.Column(db.String(255), nullable=True)
     rating = db.Column(db.Float, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
 
     trip = db.relationship("Trip", back_populates="itineraries")
     destination = db.relationship("Destination")
@@ -260,6 +286,8 @@ class ItineraryEditRequest(TimestampMixin, db.Model):
     proposed_description = db.Column(db.Text, nullable=False)
     proposed_ticket_price = db.Column(db.Float, nullable=False, default=0.0)
     proposed_map_link = db.Column(db.String(255), nullable=True)
+    proposed_latitude = db.Column(db.Float, nullable=True)
+    proposed_longitude = db.Column(db.Float, nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
 
     trip = db.relationship("Trip", back_populates="itinerary_edit_requests")

@@ -38,15 +38,7 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
 
     with app.app_context():
-        db.Model.metadata.create_all(
-            bind=db.engine,
-            tables=[
-                AgentTraveler.__table__,
-                ItineraryEditRequest.__table__,
-                NotificationLog.__table__,
-                TripUpdateRequest.__table__,
-            ],
-        )
+        db.create_all()
         ensure_sqlite_schema_updates()
 
     if app.config.get("SQLALCHEMY_DATABASE_URI", "").startswith("sqlite"):

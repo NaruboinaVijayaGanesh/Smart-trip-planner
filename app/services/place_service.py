@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from urllib.request import Request
 from urllib.request import urlopen
 
+from app.services.cache_service import api_cache
 from app.services.gemini_service import gemini_generate_json
 
 
@@ -330,6 +331,7 @@ def _text_search_payload(query: str, api_key: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+@api_cache.memoize(key_prefix="osm_search", expiry_seconds=604800)
 def _osm_search(query: str, limit: int = 15) -> list[dict]:
     params = urlencode(
         {
@@ -348,6 +350,7 @@ def _osm_search(query: str, limit: int = 15) -> list[dict]:
     return []
 
 
+@api_cache.memoize(key_prefix="openmeteo_coords", expiry_seconds=604800)
 def _openmeteo_coords(query: str) -> tuple[float, float] | None:
     params = urlencode({"name": query, "count": 1, "language": "en", "format": "json"})
     data = _fetch_json(f"https://geocoding-api.open-meteo.com/v1/search?{params}")
@@ -396,6 +399,7 @@ def _resolve_destination_coords(destination: str, destination_query: str) -> tup
     return _openmeteo_coords(destination) or _openmeteo_coords(destination_query)
 
 
+@api_cache.memoize(key_prefix="google_geocode", expiry_seconds=604800)
 def _geocode_query(query: str, api_key: str) -> tuple[float, float] | None:
     params = urlencode({"address": query, "key": api_key})
     data = _fetch_json(f"https://maps.googleapis.com/maps/api/geocode/json?{params}")
@@ -598,6 +602,7 @@ def _build_google_places_activity_rows(
     return rows_out
 
 
+@api_cache.memoize(key_prefix="destination_activities", expiry_seconds=43200)
 def fetch_live_destination_activities(
     destination: str,
     state_country: str | None = None,
@@ -1059,23 +1064,24 @@ def _fetch_google_places_hotels(
     return hotels
 
 
+@api_cache.memoize(key_prefix="live_hotels", expiry_seconds=86400)
 def fetch_live_hotels(
-    destination: str,
+    city: str,
     state_country: str | None = None,
     api_key: str | None = None,
     places_api_key: str | None = None,
-    limit: int = 10,
     model: str = "gemini-3-flash-preview",
+    limit: int = 15,
     provider: str = "rapidapi",
     rapidapi_key: str | None = None,
-    rapidapi_host: str = "booking-com.p.rapidapi.com",
-    rapidapi_locale: str = "en-us",
-    rapidapi_currency: str = "INR",
+    rapidapi_host: str | None = None,
+    rapidapi_locale: str | None = None,
+    rapidapi_currency: str | None = "INR",
     rapidapi_timeout: int = 15,
     checkin_date: str | None = None,
     checkout_date: str | None = None,
 ) -> list[dict]:
-    destination_query = _build_query(destination, state_country)
+    destination_query = _build_query(city, state_country)
     hotels: list[dict] = []
     seen_names: set[str] = set()
 
@@ -1105,7 +1111,7 @@ def fetch_live_hotels(
         hotels.append(
             {
                 "name": name,
-                "city": destination,
+                "city": city,
                 "address": address,
                 "price_min": round(price_min, 2),
                 "price_max": round(price_max, 2),
@@ -1120,7 +1126,7 @@ def fetch_live_hotels(
     if provider == "rapidapi" and rapidapi_key:
         try:
             rapid_rows = _fetch_rapidapi_hotels(
-                destination=destination,
+                destination=city,
                 destination_query=destination_query,
                 rapidapi_key=rapidapi_key,
                 rapidapi_host=rapidapi_host,
@@ -1143,7 +1149,7 @@ def fetch_live_hotels(
         remaining = max(3, limit - len(hotels))
         prompt = (
             "You are a travel data API. Return only JSON array with no markdown.\n"
-            f"Generate exactly {remaining} hotel recommendations for destination: {destination_query}.\n"
+            f"Provide {remaining} high-quality hotel recommendations for the city of '{city}' in '{state_country}'.\n"
             "Each item must include keys: name, address, rating, price_min_inr, price_max_inr, distance_km.\n"
             "Rules: hotels must belong to destination city/region; rating between 3.5 and 5.0; "
             "price_max_inr >= price_min_inr; distance_km numeric."
@@ -1191,7 +1197,7 @@ def fetch_live_hotels(
     if places_api_key and len(hotels) < limit:
         try:
             gp_rows = _fetch_google_places_hotels(
-                destination=destination,
+                destination=city,
                 destination_query=destination_query,
                 places_api_key=places_api_key,
                 limit=max(10, limit),
@@ -1209,9 +1215,9 @@ def fetch_live_hotels(
             display_name = str(row.get("display_name", "")).strip()
             if not display_name:
                 continue
-            if not _contains_destination(display_name, destination):
+            if not _contains_destination(display_name, city):
                 continue
-            name = (display_name.split(",")[0] or "").strip() or f"{destination} Hotel"
+            name = (display_name.split(",")[0] or "").strip() or f"{city} Hotel"
             est_min, est_max = estimate_hotel_price_range(None, 4.1)
             _append_hotel(
                 {
@@ -1232,7 +1238,7 @@ def fetch_live_hotels(
         for idx in range(limit - len(hotels)):
             rating = 4.1 + (idx % 3) * 0.1
             est_min, est_max = estimate_hotel_price_range(None, rating)
-            name = f"{destination} Stay {len(hotels) + 1}"
+            name = f"{city} Stay {len(hotels) + 1}"
             _append_hotel(
                 {
                     "name": name,

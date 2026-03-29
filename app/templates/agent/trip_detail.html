@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Agent Trip Details{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <div class="row g-3">
     <div class="col-lg-3">{% include "partials/agent_sidebar.html" %}</div>
     <div class="col-lg-9">
@@ -227,6 +228,13 @@
             </div>
         </div>
 
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5><i class="bi bi-map-fill me-2"></i>Interactive Route Map</h5>
+                <div id="trip-map"></div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h5>Itinerary (Manual Edit Supported)</h5>
@@ -285,6 +293,62 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => { copyBtn.textContent = "Copy URL"; }, 1600);
         }
     });
+});
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const map = L.map('trip-map');
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const points = [];
+    const markers = [];
+
+    {% for day, items in itinerary_by_day.items() %}
+        {% for item in items %}
+            {% if item.latitude and item.longitude %}
+                (function() {
+                    const lat = {{ item.latitude }};
+                    const lng = {{ item.longitude }};
+                    const title = "{{ item.title|e }}";
+                    const slot = "{{ item.time_slot|e }}";
+                    const day = {{ item.day_number }};
+                    
+                    const marker = L.marker([lat, lng]).addTo(map);
+                    marker.bindPopup(`
+                        <div class="map-popup-content">
+                            <h6>Day ${day} - ${slot}</h6>
+                            <strong>${title}</strong>
+                            <p class="text-muted small mb-0">{{ (item.description|e)[:80] }}...</p>
+                        </div>
+                    `);
+                    points.push([lat, lng]);
+                    markers.push(marker);
+                })();
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+
+    if (points.length > 0) {
+        if (points.length > 1) {
+            const polyline = L.polyline(points, {
+                color: '#224f89',
+                weight: 4,
+                opacity: 0.7,
+                dashArray: '10, 10',
+                lineJoin: 'round'
+            }).addTo(map);
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        } else {
+            map.setView(points[0], 13);
+        }
+    } else {
+        map.setView([20.5937, 78.9629], 5);
+    }
 });
 </script>
 {% endblock %}
