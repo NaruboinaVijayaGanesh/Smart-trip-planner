@@ -1,9 +1,5 @@
-import os
-
+# app/app.py
 from app import create_app
 
+# Expose Flask app for serverless deployment
 app = create_app()
-
-if __name__ == "__main__":
-    debug_mode = os.getenv("FLASK_DEBUG", "1") == "1"
-    app.run(debug=debug_mode, use_reloader=False, threaded=False)
