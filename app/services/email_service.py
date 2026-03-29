@@ -7,7 +7,7 @@ from flask import current_app
 
 def _mail_config() -> dict:
     return {
-        "host": current_app.config.get("MAIL_HOST"),
+        "host": current_app.config.get("MAIL_SERVER"),
         "port": int(current_app.config.get("MAIL_PORT", 587)),
         "username": current_app.config.get("MAIL_USERNAME"),
         "password": current_app.config.get("MAIL_PASSWORD"),
