@@ -17,7 +17,6 @@ AI Trip Planner is an intelligent travel planning system that automates itinerar
 * 🔄 Dynamic itinerary regeneration
 * 📍 Multi-destination trip planning
 * 👤 User authentication and profile management
-* 📩 Notifications (Email & WhatsApp)
 * 🧾 Booking and payment tracking
 
 ---
