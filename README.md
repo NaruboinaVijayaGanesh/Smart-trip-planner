@@ -1,131 +1,120 @@
-# AI AIR TRIP PLANNER
 
-Production-ready Flask web application for AI-assisted air trip planning with traveler and travel-agent workflows.
+# ✈️ AI Trip Planner
 
-## 1. Project Structure
+## 📌 Overview
 
-```text
-atp/
-  app/
-    __init__.py
-    config.py
-    extensions.py
-    controllers/
-      auth_controller.py
-      main_controller.py
-      traveler_controller.py
-      agent_controller.py
-    models/
-      entities.py
-    services/
-      authz.py
-      form_service.py
-      trip_service.py
-      budget_service.py
-      hotel_service.py
-      weather_service.py
-      ml_service.py
-      seed_service.py
-    templates/
-      base.html
-      index.html
-      auth/
-      traveler/
-      agent/
-      partials/
-    static/
-      css/style.css
-      js/app.js
-  ml/
-    ml_model.py
-    train_model.py
-  data/
-    budget_dataset.csv
-  run.py
-  requirements.txt
+AI Trip Planner is an intelligent travel planning system that automates itinerary generation, budget estimation, and booking management. It uses Machine Learning and real-time data to provide users with accurate, efficient, and personalized travel plans.
+
+---
+
+## 🚀 Features
+
+* 🧭 Automatic day-wise itinerary generation
+* 💰 Budget prediction using Machine Learning (Random Forest)
+* 🍽️ Food cost estimation
+* 🌦️ Real-time weather updates
+* 🏨 Hotel recommendations
+* 🔄 Dynamic itinerary regeneration
+* 📍 Multi-destination trip planning
+* 👤 User authentication and profile management
+* 📩 Notifications (Email & WhatsApp)
+* 🧾 Booking and payment tracking
+
+---
+
+## 🧠 Machine Learning
+
+The system uses a **Random Forest Regressor** for budget prediction.
+
+* Handles both categorical and numerical data
+* Uses **OneHotEncoder** for feature transformation
+* Built using **Scikit-learn Pipeline**
+* Model is trained on travel dataset
+* Saved and loaded using **Joblib**
+
+---
+
+## 🛠️ Technologies Used
+
+* **Frontend:** HTML, CSS, JavaScript
+* **Backend:** Python (Flask)
+* **Database:** SQLite / MySQL
+* **ML Libraries:** Scikit-learn, Pandas, NumPy
+* **APIs:** Weather API, Maps API
+* **Tools:** VS Code, Jupyter Notebook
+
+---
+
+## 📂 Project Structure
+
+```id="7f9d0g"
+AI-Trip-Planner/
+│── app/
+│── ml/
+│   │── ml_model.py
+│   │── food_model.py
+│── data/
+│   │── budget_dataset.csv
+│── templates/
+│── static/
+│── config.py
+│── run.py
 ```
 
-## 2. Features Implemented
+---
 
-- Role-based authentication with Flask-Login
-  - Registration with role selection (`traveler` / `agent`)
-  - Secure password hashing
-  - Role-based dashboard redirection
-- Traveler module
-  - Trip creation with multi-destination support
-  - AI itinerary generation (day-wise with activities)
-  - Budget breakdown and ML predicted budget
-  - My Trips list, details, regenerate, delete
-- Travel Agent module
-  - Dashboard metrics (clients, trips, bookings, revenue)
-  - Client CRUD
-  - Create trip for client with service charge and status
-  - Trip management, manual itinerary edits, status updates
-  - Hotel booking workflow (pending/confirmed/cancelled + paid/pending)
-  - WhatsApp share link and email structure
-- Machine learning integration (Option B)
-  - Regression model using scikit-learn
-  - dataset included
-  - Train/save/load pipeline
-  - Runtime budget prediction integrated into trip calculations
+## ⚙️ Installation
 
-## 3. Database Models
+1. Clone the repository
 
-Implemented SQLAlchemy models with relationships and `created_at` timestamps:
+```id="9d0lfi"
+git clone https://github.com/your-username/ai-trip-planner.git
+```
 
-- `User`
-- `Client`
-- `Trip`
-- `Destination`
-- `Itinerary`
-- `Hotel`
-- `Booking`
-- `Payment`
-- `Activity`
+2. Navigate to project folder
 
-## 4. Step-by-Step Setup
+```id="kp5d8y"
+cd ai-trip-planner
+```
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+3. Install dependencies
 
-```bash
+```id="r2l1bf"
 pip install -r requirements.txt
 ```
 
-3. (Optional) Train ML model manually:
+4. Run the application
 
-```bash
-python -m ml.train_model
-```
-
-4. Initialize database and hotel seed data:
-
-```bash
-flask --app run.py init-db
-```
-
-5. Run the app:
-
-```bash
+```id="x2c8sh"
 python run.py
 ```
 
-6. Open in browser:
+---
 
-```text
-http://127.0.0.1:5000
-```
+## ▶️ Usage
 
-## 5. Default Workflow
+* Register or Login
+* Enter travel details (destination, days, people, travel mode)
+* Generate itinerary
+* View predicted budget and food cost
+* Modify itinerary if needed
+* Book and manage trips
 
-1. Register two accounts: one `Traveler`, one `Travel Agent`.
-2. Login as traveler to generate trips and review itineraries.
-3. Login as agent to add clients, create client trips, and manage bookings.
+---
 
-## 6. Notes for Production Hardening
+## 📊 Future Scope
 
-- Replace default `SECRET_KEY` with a strong secret from environment.
-- Use PostgreSQL/MySQL instead of SQLite for multi-user production workloads.
-- Add CSRF protection (Flask-WTF), rate limiting, and structured logging.
-- Add automated tests (unit + integration + route authorization tests).
-- Add Alembic/Flask-Migrate for schema migrations.
+* Advanced AI-based recommendations
+* Mobile app development
+* More accurate prediction models
+* Integration with more travel services
+
+---
+
+## 📚 References
+
+* Machine Learning with Scikit-learn
+* Flask Documentation
+* Travel and Weather APIs
+
+---
