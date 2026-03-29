@@ -1,10 +1,10 @@
 from flask import Flask
 
-def create_app():
-    app = Flask(__name__)
+app = Flask(__name__)
 
-    @app.route("/")
-    def home():
-        return "Smart Trip Planner Running"
+@app.route("/")
+def home():
+    return "Smart Trip Planner Running Successfully 🚀"
 
-    return app
+if __name__ == "__main__":
+    app.run()
