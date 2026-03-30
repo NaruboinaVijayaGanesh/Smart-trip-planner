@@ -11,7 +11,7 @@ def _mail_config() -> dict:
         "port": int(current_app.config.get("MAIL_PORT", 587)),
         "username": current_app.config.get("MAIL_USERNAME"),
         "password": current_app.config.get("MAIL_PASSWORD"),
-        "use_tls": bool(current_app.config.get("MAIL_USE_TLS", True)),
+         "use_tls": str(current_app.config.get("MAIL_USE_TLS", "True")).lower() == "true",
         "from_email": current_app.config.get("MAIL_FROM"),
     }
 
