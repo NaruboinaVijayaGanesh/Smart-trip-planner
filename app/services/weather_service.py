@@ -133,7 +133,7 @@ def get_live_weather(destination: str, start_date: date, day_offset: int, provid
     target_date = start_date + timedelta(days=day_offset)
     iso_date = target_date.isoformat()
     api_key = current_app.config.get("GOOGLE_GEMINI_AI_API_KEY")
-    model = current_app.config.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model = current_app.config.get("GEMINI_MODEL", "gemini-flash-latest")
 
     providers = [provider, "open-meteo", "gemini"] if provider not in {"open-meteo", "gemini"} else [provider]
     if "open-meteo" not in providers:

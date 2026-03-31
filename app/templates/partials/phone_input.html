@@ -54,7 +54,9 @@
         type="tel"
         class="{{ ctrl_class }} phone-number-input"
         placeholder="9876543210"
-        maxlength="15"
+        maxlength="10"
+        pattern="\d{10}"
+        oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
         {% if required %}required{% endif %}
         {% if form_attr %}form="{{ form_attr }}"{% endif %}
     >
@@ -66,9 +68,6 @@
         {% if form_attr %}form="{{ form_attr }}"{% endif %}
     >
 </div>
-{% if size != 'sm' %}
-<small class="text-muted">Enter number without leading zero (e.g. 9876543210)</small>
-{% endif %}
 {% if existing_value %}
 <script>
 (function () {

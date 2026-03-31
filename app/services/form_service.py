@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.services.validation_service import (
+    destinations_are_reachable,
     destinations_share_same_country,
     is_real_location,
     is_valid_location_text,
@@ -9,7 +10,15 @@ from app.services.validation_service import (
 
 def parse_trip_form(form):
     raw_destinations = form.get("destinations", "")
-    destinations = [item.strip() for item in raw_destinations.replace("\n", ",").split(",") if item.strip()]
+    dest_list = [item.strip() for item in raw_destinations.replace("\n", ",").split(",") if item.strip()]
+    
+    seen = set()
+    destinations = []
+    for d in dest_list:
+        lower_d = d.lower()
+        if lower_d not in seen:
+            seen.add(lower_d)
+            destinations.append(d)
 
     preferences = form.getlist("preferences")
 
@@ -52,6 +61,10 @@ def validate_trip_payload(data):
     ok, country_error = destinations_share_same_country(data["destinations"], hint=data.get("state_country"))
     if not ok:
         return False, country_error
+    
+    ok, distance_error = destinations_are_reachable(data["destinations"], hint=data.get("state_country"))
+    if not ok:
+        return False, distance_error
     if data["number_of_days"] <= 0:
         return False, "Number of days must be greater than zero."
     if data["number_of_days"] < len(data["destinations"]):

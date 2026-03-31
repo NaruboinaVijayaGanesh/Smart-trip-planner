@@ -98,8 +98,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!address) {
             return "";
         }
+        // Prioritize larger administrative areas: city > district > town > suburb > county > village > state > country
         return sanitizeLocationText(
-            address.city || address.town || address.village || address.suburb || address.county || address.state || address.country || ""
+            address.city || address.state_district || address.county || address.town || address.suburb || address.village || address.state || address.country || ""
         );
     };
 
@@ -272,11 +273,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const applyAutoFill = () => {
             const selected = (fromLocationInput.value || "").trim();
             const meta = geoResultMap.get(selected);
-            if (meta && stateCountryInput && !stateCountryInput.value.trim()) {
-                const parts = [meta.admin, meta.country].filter(Boolean);
-                if (parts.length) {
-                    stateCountryInput.value = parts.join(", ");
+            if (meta) {
+                if (stateCountryInput && !stateCountryInput.value.trim()) {
+                    const parts = [meta.admin, meta.country].filter(Boolean);
+                    if (parts.length) {
+                        stateCountryInput.value = parts.join(", ");
+                    }
                 }
+                fromLocationInput.value = meta.cityName;
             }
             // Also try partial match (user typed city name without country)
             if (!meta && stateCountryInput && !stateCountryInput.value.trim()) {
@@ -408,10 +412,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const destinations = destinationsInput.value
+            const rawDestinations = destinationsInput.value
                 .split(/[,\n]/)
                 .map((item) => item.trim())
                 .filter(Boolean);
+
+            const destinations = [];
+            const seenDests = new Set();
+            rawDestinations.forEach(d => {
+                const lower = d.toLowerCase();
+                if (!seenDests.has(lower)) {
+                    seenDests.add(lower);
+                    destinations.push(d);
+                }
+            });
 
             const fromLocation = (tripForm.querySelector('input[name="from_location"]')?.value || "").trim();
             const stateCountry = (tripForm.querySelector('input[name="state_country"]')?.value || "").trim();

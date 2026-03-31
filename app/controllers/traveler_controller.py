@@ -1,8 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from flask import Blueprint, abort, current_app, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import OperationalError
+from werkzeug.utils import secure_filename
+import os
 
 from app.extensions import db
 from app.models import Booking, Hotel, ItineraryEditRequest, Trip, TripUpdateRequest, User
@@ -22,11 +24,6 @@ from app.services.trip_service import (
 from app.services.trip_update_approval_service import approve_trip_update_request, reject_trip_update_request
 from app.services.weather_service import get_live_weather
 from app.services.whatsapp_service import send_trip_whatsapp_notifications
-from app.services.packing_service import generate_ai_packing_list
-from app.services.food_recommendation_service import generate_local_food_guide
-from app.services.export_service import generate_trip_pdf, generate_trip_ics
-
-
 traveler_bp = Blueprint("traveler", __name__)
 TIME_SLOT_ORDER = {
     "Early Morning": 0,
@@ -50,6 +47,10 @@ def dashboard():
     all_agents = User.query.filter_by(role="agent").order_by(User.full_name.asc()).all()
     upcoming = [trip for trip in trips if trip.status in {"draft", "sent", "confirmed", "in_progress"}]
     total_spent = sum(trip.total_group_cost for trip in trips)
+    
+    # Recent bookings for notification section (excluding cancelled)
+    recent_bookings = Booking.query.join(Trip).filter(Trip.traveler_id == current_user.id, Booking.status != 'cancelled').order_by(Booking.updated_at.desc()).limit(5).all()
+    
     return render_template(
         "traveler/dashboard.html",
         trips=trips[:4],
@@ -57,6 +58,7 @@ def dashboard():
         upcoming_trips=len(upcoming),
         total_spent=round(total_spent, 2),
         all_agents=all_agents,
+        recent_bookings=recent_bookings
     )
 
 
@@ -128,6 +130,10 @@ def view_trip(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     if trip.traveler_id != current_user.id:
         abort(403)
+
+
+    # New bookings are disabled for completed trips is handled in the template and create_booking POST route.
+    # No redirect here to avoid infinite loops.
 
     cost_repaired = ensure_trip_cost_floor_values(trip)
     destinations = parse_destinations(trip.destinations_raw)
@@ -211,6 +217,11 @@ def regenerate(trip_id):
     if trip.traveler_id != current_user.id:
         abort(403)
 
+    if trip.status == "completed":
+        flash("New bookings are disabled for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+        abort(403)
+
     keep_days_raw = request.form.getlist("keep_days")
     keep_days = set()
     for value in keep_days_raw:
@@ -272,6 +283,11 @@ def regenerate(trip_id):
 def approve_trip(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if trip.status == "completed":
+        flash("New bookings are disabled for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
         abort(403)
 
     pending_update = (
@@ -373,9 +389,11 @@ def delete_trip(trip_id):
     if trip.traveler_id != current_user.id:
         abort(403)
 
-    db.session.delete(trip)
+    # Remove traveler from trip instead of deleting the entire trip
+    # This keeps the trip visible in agent's dashboard
+    trip.traveler_id = None
     db.session.commit()
-    flash("Trip deleted.", "info")
+    flash("Trip removed from your dashboard.", "info")
     return redirect(url_for("traveler.my_trips"))
 
 
@@ -385,6 +403,11 @@ def delete_trip(trip_id):
 def create_booking(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if trip.status == "completed":
+        flash("New bookings are disabled for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
         abort(403)
 
     hotel_id = request.form.get("hotel_id")
@@ -411,6 +434,14 @@ def create_booking(trip_id):
         flash("Check-out date must be after check-in date.", "danger")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
 
+    if checkin_date < date.today():
+        flash("Check-in date cannot be in the past.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    if checkin_date < trip.start_date:
+        flash(f"Check-in date cannot be before the trip start date ({trip.start_date}).", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
     booking = Booking(
         trip_id=trip.id,
         hotel_id=hotel.id,
@@ -420,7 +451,7 @@ def create_booking(trip_id):
         reference_number=request.form.get("reference_number", "").strip() or None,
         status="pending",
         payment_status="pending",
-        total_price=float(request.form.get("total_price", 0) or 0),
+        total_price=0.0,  # Traveler does not set the price anymore
     )
 
     availability_status, _rooms = get_live_hotel_availability(
@@ -436,11 +467,111 @@ def create_booking(trip_id):
 
     db.session.add(booking)
     db.session.commit()
-    sent, targets = send_trip_whatsapp_notifications(trip, "Hotel booking created")
+    sent, targets = send_trip_whatsapp_notifications(trip, f"Booking request created for {hotel.name}")
     if targets:
         current_app.logger.info("Traveler booking WhatsApp sent to %s/%s targets", sent, targets)
-    flash("Booking created successfully.", "success")
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id, pop_payment=booking.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/like", methods=["POST"])
+@login_required
+@role_required("traveler")
+def like_trip(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if trip.status == "completed":
+        flash("New bookings are disabled for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+        abort(403)
+    
+    if trip.status != "sent":
+        flash("Interest can only be expressed for trips sent by the agent.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    trip.status = "liked"
+    db.session.commit()
+    
+    # Notify agent via WhatsApp (Optional but recommended)
+    send_trip_whatsapp_notifications(trip, f"The traveler ({current_user.full_name}) has liked the trip and expressed interest in traveling!")
+    
+    flash("You've successfully expressed interest in this trip! The agent will review and confirm soon.", "success")
     return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+@traveler_bp.route("/trips/<int:trip_id>/feedback", methods=["POST"])
+@login_required
+@role_required("traveler")
+def submit_feedback(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if trip.status != "completed":
+        flash("Feedback can only be submitted for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    rating = request.form.get("rating")
+    text = request.form.get("feedback_text", "").strip()
+    
+    if not rating:
+        flash("Please provide a rating.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    trip.feedback_rating = int(rating)
+    trip.feedback_text = text
+    db.session.commit()
+    
+    flash("Thank you for your feedback!", "success")
+    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
+
+
+@traveler_bp.route("/bookings/<int:booking_id>/submit_payment", methods=["POST"])
+@login_required
+@role_required("traveler")
+def submit_payment(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    trip = Trip.query.get(booking.trip_id)
+    if trip.traveler_id != current_user.id:
+        abort(403)
+
+    utr_number = request.form.get("utr_number", "").strip()
+    if not utr_number:
+        flash("UTR Number / Transaction ID is required for verification.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    if "screenshot" not in request.files:
+        flash("Please upload the payment screenshot.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    file = request.files["screenshot"]
+    if file.filename == "":
+        flash("No screenshot selected.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(f"booking_{booking.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+        file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+        file.save(file_path)
+
+        booking.utr_number = utr_number
+        booking.payment_screenshot = filename
+        booking.payment_status = "verification_pending"
+        db.session.commit()
+
+        # Notify Agent
+        send_trip_whatsapp_notifications(trip, f"Traveler submitted payment proof for booking #{booking.id}. UTR: {utr_number}")
+
+        flash("Payment details submitted successfully! Agent will verify and confirm your booking soon.", "success")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
+    else:
+        flash("Invalid file format. Allowed: png, jpg, jpeg.", "danger")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
 
 
 @traveler_bp.route("/trips/<int:trip_id>/food-feedback", methods=["POST"])
@@ -449,6 +580,11 @@ def create_booking(trip_id):
 def submit_food_feedback(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     if trip.traveler_id != current_user.id:
+        abort(403)
+
+    if trip.status == "completed":
+        flash("New bookings are disabled for completed trips.", "warning")
+        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
         abort(403)
 
     actual_food_cost_raw = request.form.get("actual_food_cost", "").strip()
@@ -478,159 +614,7 @@ def submit_food_feedback(trip_id):
     return redirect(url_for("traveler.view_trip", trip_id=trip.id))
 
 
-@traveler_bp.route("/trips/<int:trip_id>/packing/generate", methods=["POST"])
-@login_required
-@role_required("traveler")
-def generate_packing(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    items = generate_ai_packing_list(trip)
-    if not items:
-        flash("Could not generate packing list. Please try again later.", "warning")
-    else:
-        trip.packing_list = items
-        db.session.commit()
-        flash("AI Packing Checklist generated!", "success")
-
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
 
 
-@traveler_bp.route("/trips/<int:trip_id>/packing/toggle", methods=["POST"])
-@login_required
-@role_required("traveler")
-def toggle_packing_item(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    item_id = request.form.get("item_id")
-    if not item_id:
-        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-
-    current_list = trip.packing_list
-    updated = False
-    for it in current_list:
-        if it.get("id") == item_id:
-            it["checked"] = not it.get("checked", False)
-            updated = True
-            break
-    
-    if updated:
-        trip.packing_list = current_list
-        db.session.commit()
-    
-    # Check if it's an AJAX request
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return {"success": True}
-
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
 
 
-@traveler_bp.route("/trips/<int:trip_id>/packing/reset", methods=["POST"])
-@login_required
-@role_required("traveler")
-def reset_packing(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    trip.packing_list = []
-    db.session.commit()
-    flash("Packing checklist cleared.", "info")
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-
-
-@traveler_bp.route("/trips/<int:trip_id>/food/generate", methods=["POST"])
-@login_required
-@role_required("traveler")
-def generate_food_guide(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    guide = generate_local_food_guide(trip)
-    if not guide:
-        flash("Could not generate food guide. Please try again later.", "warning")
-    else:
-        trip.food_deep_dive = guide
-        db.session.commit()
-        flash("Local food guide generated!", "success")
-
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-
-
-@traveler_bp.route("/trips/<int:trip_id>/food/reset", methods=["POST"])
-@login_required
-@role_required("traveler")
-def reset_food_guide(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    trip.food_deep_dive = []
-    db.session.commit()
-    flash("Food guide cleared.", "info")
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-
-
-@traveler_bp.route("/trips/<int:trip_id>/export/pdf")
-@login_required
-@role_required("traveler")
-def export_pdf(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    itinerary_by_day = {}
-    for item in sorted(trip.itineraries, key=_itinerary_sort_key):
-        itinerary_by_day.setdefault(item.day_number, []).append(item)
-
-    pdf_bytes = generate_trip_pdf(trip, itinerary_by_day)
-    
-    response = make_response(pdf_bytes)
-    response.headers["Content-Type"] = "application/pdf"
-    response.headers["Content-Disposition"] = f"attachment; filename=itinerary_{trip.id}.pdf"
-    return response
-
-
-@traveler_bp.route("/trips/<int:trip_id>/export/ics")
-@login_required
-@role_required("traveler")
-def export_ics(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    ics_bytes = generate_trip_ics(trip)
-    
-    response = make_response(ics_bytes)
-    response.headers["Content-Type"] = "text/calendar"
-    response.headers["Content-Disposition"] = f"attachment; filename=itinerary_{trip.id}.ics"
-    return response
-
-
-@traveler_bp.route("/trips/<int:trip_id>/share/whatsapp", methods=["POST"])
-@login_required
-@role_required("traveler")
-def share_whatsapp(trip_id):
-    trip = Trip.query.get_or_404(trip_id)
-    if trip.traveler_id != current_user.id:
-        abort(403)
-
-    if not trip.traveler.phone:
-        flash("Please update your profile with a valid phone number first.", "warning")
-        return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-
-    sent_count, target_count = send_trip_whatsapp_notifications(trip, "Itinerary shared manually by you")
-    if sent_count > 0:
-        flash(f"Itinerary shared to your WhatsApp (+{trip.traveler.phone})!", "success")
-    else:
-        # Check if Twilio is configured
-        if not current_app.config.get("TWILIO_ACCOUNT_SID"):
-            flash("WhatsApp service is not fully configured on the server yet.", "info")
-        else:
-            flash("Failed to send WhatsApp message. Please check your phone number.", "danger")
-
-    return redirect(url_for("traveler.view_trip", trip_id=trip.id))

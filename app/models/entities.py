@@ -11,6 +11,7 @@ from app.extensions import db, login_manager
 
 class TimestampMixin:
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class User(UserMixin, TimestampMixin, db.Model):
@@ -104,8 +105,6 @@ class Trip(TimestampMixin, db.Model):
     status = db.Column(db.String(20), nullable=False, default="draft")
     destinations_raw = db.Column(db.Text, nullable=False)
     preferences_json = db.Column(db.Text, nullable=False, default="[]")
-    packing_list_json = db.Column(db.Text, nullable=True, default="[]")
-    food_deep_dive_json = db.Column(db.Text, nullable=True, default="[]")
     itinerary_summary = db.Column(db.Text, nullable=True)
 
     service_charge = db.Column(db.Float, nullable=False, default=0.0)
@@ -116,6 +115,10 @@ class Trip(TimestampMixin, db.Model):
     per_person_cost = db.Column(db.Float, nullable=False, default=0.0)
     total_group_cost = db.Column(db.Float, nullable=False, default=0.0)
     predicted_budget = db.Column(db.Float, nullable=False, default=0.0)
+    
+    # Post-trip Traveler Feedback
+    feedback_rating = db.Column(db.Integer, nullable=True)
+    feedback_text = db.Column(db.Text, nullable=True)
 
     traveler_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     agent_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
@@ -154,28 +157,6 @@ class Trip(TimestampMixin, db.Model):
     @preferences.setter
     def preferences(self, values: list[str]) -> None:
         self.preferences_json = json.dumps(values)
-
-    @property
-    def packing_list(self) -> list[dict]:
-        try:
-            return json.loads(self.packing_list_json or "[]")
-        except json.JSONDecodeError:
-            return []
-
-    @packing_list.setter
-    def packing_list(self, values: list[dict]) -> None:
-        self.packing_list_json = json.dumps(values)
-
-    @property
-    def food_deep_dive(self) -> list[dict]:
-        try:
-            return json.loads(self.food_deep_dive_json or "[]")
-        except json.JSONDecodeError:
-            return []
-
-    @food_deep_dive.setter
-    def food_deep_dive(self, values: list[dict]) -> None:
-        self.food_deep_dive_json = json.dumps(values)
 
 
 class Destination(TimestampMixin, db.Model):
@@ -240,6 +221,8 @@ class Booking(TimestampMixin, db.Model):
     reference_number = db.Column(db.String(80), nullable=True)
     status = db.Column(db.String(20), nullable=False, default="pending")
     payment_status = db.Column(db.String(20), nullable=False, default="pending")
+    utr_number = db.Column(db.String(100), nullable=True)
+    payment_screenshot = db.Column(db.String(255), nullable=True)
     total_price = db.Column(db.Float, nullable=False, default=0.0)
 
     trip = db.relationship("Trip", back_populates="bookings")

@@ -225,8 +225,10 @@ h1, h2, h3, h4, h5, .navbar-brand {
 .agent-sidebar {
     background: linear-gradient(180deg, #273a57, #17283f);
     color: #fff;
-    height: 100%;
+    height: fit-content;
     min-height: 280px;
+    position: sticky;
+    top: 0;
 }
 
 .agent-sidebar .btn {
@@ -261,40 +263,6 @@ pre {
     .classic-banner img {
         height: 180px;
     }
-}
-
-/* Trip Map Styles */
-#trip-map {
-    height: 450px;
-    width: 100%;
-    border-radius: 1.25rem;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    margin-bottom: 2rem;
-    z-index: 1;
-}
-
-.map-popup-content {
-    font-family: "Source Sans 3", sans-serif;
-}
-
-.map-popup-content h6 {
-    margin-bottom: 0.25rem;
-    color: var(--primary-deep);
-}
-
-.map-popup-content p {
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
-}
-
-.leaflet-container {
-    font-family: inherit;
-}
-
-.leaflet-popup-content-wrapper {
-    border-radius: 0.8rem;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
 }
 
 /* Packing Checklist Styles */
@@ -338,47 +306,6 @@ pre {
 
 .packing-category-title:first-of-type {
     margin-top: 0;
-}
-
-/* Food Guide Styles */
-.food-card {
-    border: 1px solid var(--line);
-    border-radius: 1rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    background: #fff;
-    overflow: hidden;
-    height: 100%;
-}
-
-.food-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-}
-
-.food-card-header {
-    background: rgba(var(--primary-rgb), 0.03);
-    padding: 1rem;
-    border-bottom: 1px solid var(--line);
-}
-
-.food-card-body {
-    padding: 1rem;
-}
-
-.food-type-badge {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    padding: 0.25rem 0.6rem;
-    border-radius: 2rem;
-    background: var(--primary-light);
-    color: var(--primary-deep);
-}
-
-.flavor-profile {
-    font-size: 0.8rem;
-    color: var(--primary-deep);
-    font-weight: 600;
 }
 
 /* Transport Tracker Styles */
@@ -445,4 +372,19 @@ pre {
 .tracking-btn:hover {
     background: var(--primary-deep);
     color: white;
+}
+
+/* Hide default browser password reveal icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
 }

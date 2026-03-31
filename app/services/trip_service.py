@@ -170,7 +170,7 @@ def _choose_day_choices(
 def _destination_activities(destination: str, state_country: str, preferences: list[str], minimum_items: int):
     places_api_key = current_app.config.get("GOOGLE_PLACES_API_KEY")
     gemini_api_key = current_app.config.get("GOOGLE_GEMINI_AI_API_KEY")
-    gemini_model = current_app.config.get("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_model = current_app.config.get("GEMINI_MODEL", "gemini-flash-latest")
     try:
         live_pool = fetch_live_destination_activities(
             destination=destination,
@@ -559,7 +559,7 @@ def generate_trip_plan(trip: Trip, regeneration_seed: int | None = None, places_
 def create_trip_from_form(data: dict, traveler_id=None, agent_id=None, client_id=None):
     trip_kwargs = {
         "title": f"{data['destinations'][0]} Adventure" if data["destinations"] else "Custom Trip",
-        "from_location": data["from_location"],
+        "from_location": data["from_location"].split(",")[0].strip(),
         "destinations_raw": ", ".join(data["destinations"]),
         "state_country": data["state_country"],
         "start_date": data["start_date"],
