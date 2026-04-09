@@ -44,18 +44,39 @@ def _itinerary_sort_key(item):
 @role_required("traveler")
 def dashboard():
     trips = Trip.query.filter_by(traveler_id=current_user.id).order_by(Trip.created_at.desc()).all()
-    all_agents = User.query.filter_by(role="agent").order_by(User.full_name.asc()).all()
-    upcoming = [trip for trip in trips if trip.status in {"draft", "sent", "confirmed", "in_progress"}]
-    total_spent = sum(trip.total_group_cost for trip in trips)
     
-    # Recent bookings for notification section (excluding cancelled)
-    recent_bookings = Booking.query.join(Trip).filter(Trip.traveler_id == current_user.id, Booking.status != 'cancelled').order_by(Booking.updated_at.desc()).limit(5).all()
+    # Limit agents list to avoid loading thousands of agents
+    all_agents = User.query.filter_by(role="agent").order_by(User.full_name.asc()).limit(100).all()
+    
+    # Filter at database level instead of in Python
+    upcoming_trips_count = Trip.query.filter(
+        Trip.traveler_id == current_user.id,
+        Trip.status.in_(["draft", "sent", "confirmed", "in_progress"])
+    ).count()
+    
+    # Use database aggregation for total spent
+    from sqlalchemy import func
+    total_spent = db.session.query(
+        func.sum(Trip.total_group_cost)
+    ).filter(Trip.traveler_id == current_user.id).scalar() or 0
+    
+    # Use eager loading to prevent N+1 queries on bookings
+    from sqlalchemy.orm import joinedload
+    recent_bookings = (
+        Booking.query
+        .options(joinedload(Booking.trip))
+        .join(Trip)
+        .filter(Trip.traveler_id == current_user.id, Booking.status != 'cancelled')
+        .order_by(Booking.updated_at.desc())
+        .limit(5)
+        .all()
+    )
     
     return render_template(
         "traveler/dashboard.html",
         trips=trips[:4],
         total_trips=len(trips),
-        upcoming_trips=len(upcoming),
+        upcoming_trips=upcoming_trips_count,
         total_spent=round(total_spent, 2),
         all_agents=all_agents,
         recent_bookings=recent_bookings
@@ -66,7 +87,14 @@ def dashboard():
 @login_required
 @role_required("traveler")
 def my_trips():
-    trips = Trip.query.filter_by(traveler_id=current_user.id).order_by(Trip.created_at.desc()).all()
+    # Add limit to avoid loading thousands of trips
+    trips = (
+        Trip.query
+        .filter_by(traveler_id=current_user.id)
+        .order_by(Trip.created_at.desc())
+        .limit(200)
+        .all()
+    )
     return render_template("traveler/my_trips.html", trips=trips)
 
 
@@ -74,7 +102,7 @@ def my_trips():
 @login_required
 @role_required("traveler")
 def create_trip():
-    all_agents = User.query.filter_by(role="agent").order_by(User.full_name.asc()).all()
+    all_agents = User.query.filter_by(role="agent").order_by(User.full_name.asc()).limit(100).all()
 
     if request.method == "POST":
         try:
@@ -220,7 +248,6 @@ def regenerate(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-        abort(403)
 
     keep_days_raw = request.form.getlist("keep_days")
     keep_days = set()
@@ -288,7 +315,6 @@ def approve_trip(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-        abort(403)
 
     pending_update = (
         TripUpdateRequest.query.filter_by(trip_id=trip.id, status="pending")
@@ -408,7 +434,6 @@ def create_booking(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-        abort(403)
 
     hotel_id = request.form.get("hotel_id")
     if not hotel_id:
@@ -484,7 +509,6 @@ def like_trip(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-        abort(403)
     
     if trip.status != "sent":
         flash("Interest can only be expressed for trips sent by the agent.", "warning")
@@ -585,7 +609,6 @@ def submit_food_feedback(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("traveler.view_trip", trip_id=trip.id))
-        abort(403)
 
     actual_food_cost_raw = request.form.get("actual_food_cost", "").strip()
     actual_total_cost_raw = request.form.get("actual_total_cost", "").strip()

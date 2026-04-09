@@ -210,7 +210,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="col-md-2"><label class="form-label">Total Price</label><input class="form-control" type="number" step="0.01" name="total_price"></div>
+                    <div class="col-md-2"><label class="form-label">Total Price</label><input class="form-control" type="number" step="0.01" name="total_price" placeholder="0.00"></div>
                     <div class="col-md-3"><label class="form-label">Booking Status</label>
                         <select class="form-select" name="status"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select>
                     </div>
@@ -235,7 +235,7 @@
                                     <td>{{ booking.reference_number or '-' }}</td>
                                     <td>{{ booking.status|title }}</td>
                                     <td>{{ booking.payment_status|title }}</td>
-                                    <td>{{ booking.total_price }}</td>
+                                    <td>₹{{ "{:,.2f}".format(booking.total_price) }}</td>
                                 </tr>
                             {% else %}
                                 <tr><td colspan="5" class="text-muted">No bookings yet.</td></tr>

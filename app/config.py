@@ -22,9 +22,10 @@ def _clean_env_value(value: str | None) -> str | None:
 class Config:
     BASE_DIR = Path(__file__).resolve().parent.parent
     INSTANCE_DIR = BASE_DIR / "instance"
-    SECRET_KEY = os.getenv("SECRET_KEY", "change-this-in-production")
+    SECRET_KEY = os.getenv("SECRET_KEY", os.urandom(24).hex())
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads", "payments")
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB file upload limit
     _RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///instance/air_trip_planner.db")
     if _RAW_DATABASE_URL.startswith("sqlite:///") and not _RAW_DATABASE_URL.startswith("sqlite:////"):
         _sqlite_rel_path = _RAW_DATABASE_URL.replace("sqlite:///", "", 1)

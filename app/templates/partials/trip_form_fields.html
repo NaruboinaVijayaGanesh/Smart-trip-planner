@@ -31,7 +31,7 @@
     <div class="col-md-6">
         <label class="form-label"><i class="bi bi-send me-1"></i>From Location</label>
         <div class="input-group">
-            <input id="fromLocationInput" list="fromLocationSuggestions" class="form-control" type="text" name="from_location" pattern="^[A-Za-z][A-Za-z\\s,.'-]{1,118}$" title="Enter a valid place name (letters only)." required>
+            <input id="fromLocationInput" list="fromLocationSuggestions" class="form-control" type="text" name="from_location" pattern="^[A-Za-z][A-Za-z0-9 ,.'-]{1,118}$" title="Enter a valid place name." required>
             <button class="btn btn-outline-secondary use-current-location" type="button">
                 <i class="bi bi-crosshair me-1"></i>Use My Current Location
             </button>
@@ -41,7 +41,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label"><i class="bi bi-geo-alt-fill me-1"></i>State / Country</label>
-        <input id="stateCountryInput" list="stateCountrySuggestions" class="form-control" type="text" name="state_country" pattern="^[A-Za-z][A-Za-z\\s,.'-]{1,118}$" title="Enter a valid state or country name (letters only)." required>
+        <input id="stateCountryInput" list="stateCountrySuggestions" class="form-control" type="text" name="state_country" pattern="^[A-Za-z][A-Za-z0-9 ,.'-]{1,118}$" title="Enter a valid state or country name." required>
         <datalist id="stateCountrySuggestions"></datalist>
     </div>
 

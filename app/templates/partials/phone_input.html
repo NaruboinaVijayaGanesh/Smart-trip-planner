@@ -55,7 +55,7 @@
         class="{{ ctrl_class }} phone-number-input"
         placeholder="9876543210"
         maxlength="10"
-        pattern="\d{10}"
+        pattern="[0-9]{10}"
         oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
         {% if required %}required{% endif %}
         {% if form_attr %}form="{{ form_attr }}"{% endif %}

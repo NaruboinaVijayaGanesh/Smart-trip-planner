@@ -43,25 +43,40 @@ def _itinerary_sort_key(item):
 @login_required
 @role_required("agent")
 def dashboard():
-    clients = Client.query.filter_by(agent_id=current_user.id).all()
-    trips = Trip.query.filter_by(agent_id=current_user.id).all()
+    # Optimized queries - use database aggregation instead of Python loops
+    clients = Client.query.filter_by(agent_id=current_user.id).limit(50).all()
+    trips = Trip.query.filter_by(agent_id=current_user.id).order_by(Trip.created_at.desc()).limit(500).all()
+    
+    # Use eager loading to avoid N+1 queries on bookings
+    from sqlalchemy.orm import joinedload
     bookings = (
-        Booking.query.join(Trip, Booking.trip_id == Trip.id)
+        Booking.query
+        .options(joinedload(Booking.trip), joinedload(Booking.hotel))
+        .join(Trip, Booking.trip_id == Trip.id)
         .filter(Trip.agent_id == current_user.id)
         .order_by(Booking.created_at.desc())
         .all()
     )
 
-    upcoming_trips = [trip for trip in trips if trip.status in {"sent", "confirmed", "in_progress"}]
-    revenue = sum(trip.total_group_cost for trip in trips)
+    # Use database aggregation instead of summing in Python
+    from sqlalchemy import func
+    total_revenue = db.session.query(
+        func.sum(Trip.total_group_cost)
+    ).filter(Trip.agent_id == current_user.id).scalar() or 0
+
+    # Filter at database level instead of in Python
+    upcoming_trips_count = Trip.query.filter(
+        Trip.agent_id == current_user.id,
+        Trip.status.in_(["sent", "confirmed", "in_progress"])
+    ).count()
 
     return render_template(
         "agent/dashboard.html",
         total_clients=len(clients),
         total_trips=len(trips),
         total_bookings=len(bookings),
-        upcoming_trips=len(upcoming_trips),
-        total_revenue=round(revenue, 2),
+        upcoming_trips=upcoming_trips_count,
+        total_revenue=round(total_revenue, 2),
         recent_activity=(trips + bookings)[:8],
         bookings=bookings[:5],
         clients=sorted(clients, key=lambda item: item.created_at, reverse=True)[:8],
@@ -72,7 +87,14 @@ def dashboard():
 @login_required
 @role_required("agent")
 def clients():
-    client_list = Client.query.filter_by(agent_id=current_user.id).order_by(Client.created_at.desc()).all()
+    # Add limit to avoid loading thousands of clients
+    client_list = (
+        Client.query
+        .filter_by(agent_id=current_user.id)
+        .order_by(Client.created_at.desc())
+        .limit(200)  # Paginate if more needed
+        .all()
+    )
     return render_template("agent/clients.html", clients=client_list)
 
 
@@ -154,7 +176,14 @@ def delete_client(client_id):
 @login_required
 @role_required("agent")
 def trips():
-    trip_list = Trip.query.filter_by(agent_id=current_user.id).order_by(Trip.created_at.desc()).all()
+    # Add limit to avoid loading thousands of trips
+    trip_list = (
+        Trip.query
+        .filter_by(agent_id=current_user.id)
+        .order_by(Trip.created_at.desc())
+        .limit(200)
+        .all()
+    )
     # Compatibility guard: prevents template crash if a stale template references `trip` outside loop.
     return render_template("agent/trips.html", trips=trip_list, trip=None)
 
@@ -290,7 +319,6 @@ def update_trip(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
-        abort(403)
 
     trip.status = request.form.get("status", trip.status).lower()
     service_charge = request.form.get("service_charge")
@@ -363,7 +391,6 @@ def start_trip(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
-        abort(403)
 
     trip.status = "in_progress"
     db.session.commit()
@@ -383,7 +410,6 @@ def end_trip(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
-        abort(403)
 
     trip.status = "completed"
     db.session.commit()
@@ -497,7 +523,6 @@ def create_booking(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
-        abort(403)
 
     hotel = Hotel.query.get_or_404(int(request.form.get("hotel_id")))
     checkin = request.form.get("checkin_date")
@@ -536,6 +561,18 @@ def create_booking(trip_id):
         flash("Selected hotel is sold out for the chosen dates. Please pick another hotel.", "danger")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
 
+    total_price_raw = request.form.get("total_price", "").strip()
+    total_price = 0.0
+    if total_price_raw:
+        try:
+            total_price = float(total_price_raw)
+            if total_price < 0:
+                flash("Total price cannot be negative.", "danger")
+                return redirect(url_for("agent.view_trip", trip_id=trip.id))
+        except ValueError:
+            flash("Invalid total price format.", "danger")
+            return redirect(url_for("agent.view_trip", trip_id=trip.id))
+    
     booking = Booking(
         trip_id=trip.id,
         hotel_id=hotel.id,
@@ -545,7 +582,7 @@ def create_booking(trip_id):
         reference_number=request.form.get("reference_number", "").strip() or None,
         status=request.form.get("status", "pending").lower(),
         payment_status=request.form.get("payment_status", "pending").lower(),
-        total_price=float(request.form.get("total_price", 0) or 0),
+        total_price=total_price,
     )
 
     db.session.add(booking)
@@ -559,13 +596,19 @@ def create_booking(trip_id):
 @login_required
 @role_required("agent")
 def bookings():
+    # Use eager loading to prevent N+1 queries when accessing booking.trip, booking.hotel
+    from sqlalchemy.orm import joinedload
     all_bookings = (
-        Booking.query.join(Trip, Booking.trip_id == Trip.id)
+        Booking.query
+        .options(joinedload(Booking.trip), joinedload(Booking.hotel))
+        .join(Trip, Booking.trip_id == Trip.id)
         .filter(Trip.agent_id == current_user.id)
         .order_by(Booking.created_at.desc())
+        .limit(500)
         .all()
     )
 
+    # Filter at Python level only after data is loaded (N+1 already prevented by eager loading)
     upcoming_checkins = [booking for booking in all_bookings if booking.checkin_date and booking.status != "cancelled"]
     return render_template(
         "agent/bookings.html",
@@ -591,7 +634,23 @@ def update_booking(booking_id):
     old_payment_status = booking.payment_status
     new_payment_status = request.form.get("payment_status", booking.payment_status).lower()
     booking.payment_status = new_payment_status
-    booking.total_price = float(request.form.get("total_price", booking.total_price) or booking.total_price)
+    
+    # Validate and update total_price
+    total_price_raw = request.form.get("total_price", "").strip()
+    if new_payment_status == "paid" and not total_price_raw:
+        flash("Total price must be provided when marking payment as Paid.", "danger")
+        return redirect(url_for("agent.bookings"))
+    
+    if total_price_raw:
+        try:
+            new_price = float(total_price_raw)
+            if new_price <= 0:
+                flash("Total price must be greater than 0.", "danger")
+                return redirect(url_for("agent.bookings"))
+            booking.total_price = new_price
+        except ValueError:
+            flash("Invalid total price. Please enter a valid number.", "danger")
+            return redirect(url_for("agent.bookings"))
 
     db.session.commit()
     
@@ -654,7 +713,6 @@ def accept_interest(trip_id):
     if trip.status == "completed":
         flash("New bookings are disabled for completed trips.", "warning")
         return redirect(url_for("agent.view_trip", trip_id=trip.id))
-        abort(403)
         
     if trip.status != "liked":
         flash("Trip interest can only be accepted if the traveler liked it.", "warning")

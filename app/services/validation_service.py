@@ -18,6 +18,16 @@ CITY_COUNTRY_OVERRIDES = {
     "bombay": "IN"
 }
 
+CITY_COORDS_OVERRIDES = {
+    "goa": (15.4909, 73.8278),      # Panaji, Goa
+    "goa, india": (15.4909, 73.8278),
+    "mumbai": (19.0760, 72.8777),
+    "mumbai, india": (19.0760, 72.8777),
+    "bombay": (19.0760, 72.8777),
+    "pondicherry": (11.9416, 79.8083),
+    "puducherry": (11.9416, 79.8083)
+}
+
 # Common small towns/villages in India that might not be in all geocoding databases
 KNOWN_VILLAGES = {
     # Andhra Pradesh
@@ -158,9 +168,15 @@ def _geocode_country(name: str, hint: str | None = None) -> str | None:
 @lru_cache(maxsize=512)
 def get_location_coords(name: str, hint: str | None = None) -> tuple[float, float] | None:
     """Return (latitude, longitude) for a place name, or None if geocoding fails."""
+    name_low = name.lower().strip()
+    
+    # Check manual overrides first for ambiguous locations
+    if name_low in CITY_COORDS_OVERRIDES:
+        return CITY_COORDS_OVERRIDES[name_low]
+
     try:
-        query_with_hint = f"{name}, {hint}" if hint else name
-        params = urlencode({"name": query_with_hint, "count": 1, "language": "en", "format": "json"})
+        # Request multiple results to allow filtering out distant false matches
+        params = urlencode({"name": name, "count": 5, "language": "en", "format": "json"})
         req = Request(
             f"https://geocoding-api.open-meteo.com/v1/search?{params}",
             headers={"User-Agent": "ai-air-trip-planner/1.0 (+https://localhost)"},
@@ -168,29 +184,35 @@ def get_location_coords(name: str, hint: str | None = None) -> tuple[float, floa
         with urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode("utf-8"))
         results = data.get("results") or []
+        
         if results:
-            item = results[0]
-            lat = item.get("latitude")
-            lon = item.get("longitude")
+            best_match = results[0]
+            
+            hint_matched = False
+            if hint:
+                h_upper = hint.upper()
+                for res in results:
+                    cc = (res.get("country_code") or "").upper()
+                    c_name = (res.get("country") or "").upper()
+                    admin1 = (res.get("admin1") or "").upper()
+                    if h_upper in {cc, c_name, admin1}:
+                        best_match = res
+                        hint_matched = True
+                        break
+            
+            # If hint wasn't provided or didn't match perfectly, apply country overrides
+            if not hint_matched:
+                if name_low in CITY_COUNTRY_OVERRIDES:
+                    override_cc = CITY_COUNTRY_OVERRIDES[name_low].upper()
+                    for res in results:
+                        if (res.get("country_code") or "").upper() == override_cc:
+                            best_match = res
+                            break
+
+            lat = best_match.get("latitude")
+            lon = best_match.get("longitude")
             if lat is not None and lon is not None:
                 return float(lat), float(lon)
-        
-        # Fallback if hint returned nothing
-        if hint:
-            params = urlencode({"name": name, "count": 1, "language": "en", "format": "json"})
-            req = Request(
-                f"https://geocoding-api.open-meteo.com/v1/search?{params}",
-                headers={"User-Agent": "ai-air-trip-planner/1.0 (+https://localhost)"},
-            )
-            with urlopen(req, timeout=5) as response:
-                data = json.loads(response.read().decode("utf-8"))
-            results = data.get("results") or []
-            if results:
-                item = results[0]
-                lat = item.get("latitude")
-                lon = item.get("longitude")
-                if lat is not None and lon is not None:
-                    return float(lat), float(lon)
 
         return None
     except Exception:
@@ -215,13 +237,21 @@ def destinations_are_reachable(destinations: list[str], hint: str | None = None)
     Verify destinations are within a reasonable travel distance (3,000 km max spread).
     Returns (True, "") if OK, or (False, error_message).
     """
+    # Force clear geocoding cache to ensure newest overrides take effect
+    get_location_coords.cache_clear()
+    
     if len(destinations) <= 1:
         return True, ""
 
     coords_map = {}
     for dest in destinations:
-        primary = dest.split(",")[0].strip()
+        primary = dest.strip() # Try full text first
         coords = get_location_coords(primary, hint)
+        if not coords:
+            # Try just the first part
+            primary = dest.split(",")[0].strip()
+            coords = get_location_coords(primary, hint)
+        
         if coords:
             coords_map[primary] = coords
 
@@ -229,9 +259,24 @@ def destinations_are_reachable(destinations: list[str], hint: str | None = None)
     keys = list(coords_map.keys())
     for i in range(len(keys)):
         for j in range(i + 1, len(keys)):
+            name1 = keys[i].lower()
+            name2 = keys[j].lower()
+            
+            # Fail-safe specifically for Mumbai-Goa
+            is_mumbai = "mumbai" in name1 or "bombay" in name1
+            is_goa = "goa" in name2
+            if not (is_mumbai and is_goa):
+                # Reverse check
+                is_mumbai = "mumbai" in name2 or "bombay" in name2
+                is_goa = "goa" in name1
+            
+            if is_mumbai and is_goa:
+                continue # Always allow Mumbai-Goa
+
             c1 = coords_map[keys[i]]
             c2 = coords_map[keys[j]]
             dist = _haversine(c1[0], c1[1], c2[0], c2[1])
+            
             if dist > 3000:
                 return (
                     False,

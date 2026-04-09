@@ -61,7 +61,7 @@
                                         </div>
                                         <div class="col-12 mt-1">
                                             <div class="input-group input-group-sm">
-                                                <input class="form-control" type="number" step="0.01" name="total_price" value="{{ booking.total_price }}" placeholder="Final Price">
+                                                <input class="form-control" type="number" step="0.01" name="total_price" value="{{ booking.total_price if booking.total_price and booking.total_price > 0 else '' }}" placeholder="Final Price" {% if booking.payment_status == 'paid' %}required{% endif %}>
                                                 <button class="btn btn-primary" title="Update Status & Price">Save</button>
                                             </div>
                                         </div>

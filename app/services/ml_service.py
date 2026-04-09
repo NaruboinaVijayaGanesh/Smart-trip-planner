@@ -23,6 +23,7 @@ def _train_and_cache_model(model_path: Path):
 
 
 def get_model():
+    """Get cached budget prediction model. Loads on first call."""
     global _cached_model
     if _cached_model is not None:
         return _cached_model
@@ -30,6 +31,7 @@ def get_model():
     model_path = Path(current_app.config["MODEL_PATH"])
     if model_path.exists():
         try:
+            current_app.logger.info("Loading budget prediction model from %s", model_path)
             _cached_model = BudgetPredictionModel.load(model_path)
         except Exception as exc:
             current_app.logger.warning(
@@ -39,6 +41,7 @@ def get_model():
             )
             _cached_model = _train_and_cache_model(model_path)
     else:
+        current_app.logger.info("Training new budget prediction model")
         _cached_model = _train_and_cache_model(model_path)
     return _cached_model
 
@@ -49,6 +52,7 @@ def predict_budget(destination: str, number_of_days: int, number_of_people: int,
 
 
 def get_food_model():
+    """Get cached food cost prediction model. Loads on first call."""
     global _cached_food_model
     if _cached_food_model is not None:
         return _cached_food_model
@@ -56,6 +60,7 @@ def get_food_model():
     model_path = Path(current_app.config["FOOD_MODEL_PATH"])
     if model_path.exists():
         try:
+            current_app.logger.info("Loading food cost prediction model from %s", model_path)
             _cached_food_model = FoodCostModel.load(model_path)
             return _cached_food_model
         except Exception as exc:

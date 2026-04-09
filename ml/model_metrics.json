@@ -1,6 +1,6 @@
 {
   "dataset": {
-    "path": "C:\\Users\\Deepa\\Downloads\\atp\\data\\budget_dataset.csv",
+    "path": "D:\\ATP(clonned)\\Smart-trip-planner\\data\\budget_dataset.csv",
     "total_rows": 100000,
     "train_rows": 80000,
     "test_rows": 20000
@@ -16,13 +16,13 @@
     "f1_weighted": 0.9959010674327489
   },
   "regression": {
-    "mae": 1881.1324816155277,
-    "rmse": 3327.4172346971027,
+    "mae": 1881.1324816155284,
+    "rmse": 3327.417234697103,
     "r2": 0.9998628753026773
   },
   "artifacts": {
-    "confusion_matrix_csv": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\confusion_matrix.csv",
-    "classification_report_csv": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\classification_report.csv",
-    "model_path": "C:\\Users\\Deepa\\Downloads\\atp\\ml\\budget_model.joblib"
+    "confusion_matrix_csv": "D:\\ATP(clonned)\\Smart-trip-planner\\ml\\confusion_matrix.csv",
+    "classification_report_csv": "D:\\ATP(clonned)\\Smart-trip-planner\\ml\\classification_report.csv",
+    "model_path": "D:\\ATP(clonned)\\Smart-trip-planner\\ml\\budget_model.joblib"
   }
 }
