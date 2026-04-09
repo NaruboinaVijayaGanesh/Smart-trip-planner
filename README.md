@@ -1,4 +1,4 @@
-# AI AIR TRIP PLANNER
+# AI TRIP PLANNER
 
 Production-ready Flask web application for AI-assisted air trip planning with traveler and travel-agent workflows.
 
@@ -187,31 +187,45 @@ Implemented SQLAlchemy models with relationships and `created_at` timestamps:
 pip install -r requirements.txt
 ```
 
-3. (Optional) Train ML model manually:
+2. Navigate to project folder
 
-```bash
-python -m ml.train_model
+```id="kp5d8y"
+cd ai-trip-planner
 ```
 
-4. Initialize database and hotel seed data:
+3. Install dependencies
 
-```bash
-flask --app run.py init-db
+```id="r2l1bf"
+pip install -r requirements.txt
 ```
 
-5. Run the app:
+4. Run the application
 
-```bash
+```id="x2c8sh"
 python run.py
 ```
 
-6. Open in browser:
+---
 
-```text
-http://127.0.0.1:5000
-```
+## ▶️ Usage
 
-## 5. Default Workflow
+* Register or Login
+* Enter travel details (destination, days, people, travel mode)
+* Generate itinerary
+* View predicted budget and food cost
+* Modify itinerary if needed
+* Book and manage trips
+
+---
+
+## 📊 Future Scope
+
+* Advanced AI-based recommendations
+* Mobile app development
+* More accurate prediction models
+* Integration with more travel services
+
+---
 
 ### For Travelers
 1. Open http://127.0.0.1:5000 and register a new account with role `Traveler`
